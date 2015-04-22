@@ -1,0 +1,23 @@
+# Streams-specific excludes
+# toolkit.xml is excluded because it is built by Ant
+/toolkit.xml
+/.toolkitList
+/.project
+/.settings
+/output
+
+# Java excludes
+*.class
+
+# exclude generated Java primitive operator model files
+
+# Package Files
+*.jar
+*.war
+*.ear
+
+# Temporary directories
+/tmp/
+
+# Windows thumb index file
+Thumbs.db
