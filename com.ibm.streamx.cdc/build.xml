@@ -21,20 +21,18 @@
 	<target name="init">
 		<mkdir dir="${build.dir}" />
 		<mkdir dir="${lib.dir}" />
-		<mkdir dir="${impl.lib.dir}" />
 	</target>
 
 	<target name="clean">
 		<delete dir="${build.dir}" />
-		<delete dir="${impl.lib.dir}" />
 	</target>
-
 	<path id="cp.streams">
-		<pathelement location="${streams.install}/lib/com.ibm.streams.operator*.jar" />
+		<pathelement location="${streams.install}/lib/com.ibm.streams.operator.jar" />
+		<pathelement location="${streams.install}/lib/com.ibm.streams.operator.samples.jar" />
 	</path>
 
 	<path id="cp.cdc_as">
-		<fileset dir="${cdc_as_lib.dir}">
+		<fileset dir="${cdc_as_lib.dir}" >
 			<include name="**/*.jar" />
 		</fileset>
 	</path>
@@ -58,11 +56,10 @@
 
 	<target name="jar" depends="compile">
 
-		<jar destfile="${impl.lib.dir}/com.ibm.streamsx.cdc.jar" basedir="${build.dir}" includes="com/ibm/streamsx/cdc/**" filesonly="true">
+		<jar destfile="${lib.dir}/com.ibm.streamsx.cdc.jar" basedir="${build.dir}" includes="com/ibm/streamsx/cdc/**" filesonly="true">
 
 		</jar>
 		<delete dir="${build.dir}" />
 	</target>
 
 </project>
-
