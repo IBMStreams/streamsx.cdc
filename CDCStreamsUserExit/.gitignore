@@ -1,0 +1,12 @@
+# Eclipse excludes
+/bin/
+/.project
+/.settings
+
+# Java excludes
+*.class
+
+# Package Files
+*.jar
+*.war
+*.ear

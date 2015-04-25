@@ -26,13 +26,14 @@
 	<target name="clean">
 		<delete dir="${build.dir}" />
 	</target>
+
 	<path id="cp.streams">
 		<pathelement location="${streams.install}/lib/com.ibm.streams.operator.jar" />
 		<pathelement location="${streams.install}/lib/com.ibm.streams.operator.samples.jar" />
 	</path>
 
 	<path id="cp.cdc_as">
-		<fileset dir="${cdc_as_lib.dir}" >
+		<fileset dir="${cdc_as_lib.dir}">
 			<include name="**/*.jar" />
 		</fileset>
 	</path>
@@ -44,7 +45,6 @@
 		</exec>
 	</target>
 
-
 	<target name="compile" depends="init">
 		<javac srcdir="${src.dir}" destdir="${build.dir}" debug="true" includeantruntime="no">
 			<classpath>
@@ -55,10 +55,7 @@
 	</target>
 
 	<target name="jar" depends="compile">
-
-		<jar destfile="${lib.dir}/com.ibm.streamsx.cdc.jar" basedir="${build.dir}" includes="com/ibm/streamsx/cdc/**" filesonly="true">
-
-		</jar>
+		<jar destfile="${lib.dir}/com.ibm.streamsx.cdc.jar" basedir="${build.dir}" includes="com/ibm/streamsx/cdc/**" filesonly="true" />
 		<delete dir="${build.dir}" />
 	</target>
 
