@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Licensed Materials - Property of IBM
+# Copyright IBM Corp. 2015
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with
+# IBM Corp.
+-->
+<project name="CDCStreamsUserExit" basedir="." default="compile">
+
+	<property environment="env" />
+	<fail unless="env.CDC_ENGINE_HOME" message="CDC_ENGINE_HOME not set. This toolkit requires the InfoSphere Data Replication CDC Access Server jar files. Please ensure that the CDC ts.jar file are available under $CDC_ENGINE_HOME/lib." />
+	<property name="cdc_lib.dir" value="${env.CDC_ENGINE_HOME}/lib" />
+
+	<property name="src.dir" value="src" />
+	<property name="build.dir" value="bin" />
+
+	<target name="init">
+		<mkdir dir="${build.dir}" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<path id="cp.cdc">
+		<fileset dir="${cdc_lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+
+	<target name="compile" depends="init">
+		<javac srcdir="${src.dir}" destdir="${build.dir}" debug="true" includeantruntime="no">
+			<classpath>
+				<path refid="cp.cdc" />
+			</classpath>
+		</javac>
+	</target>
+
+</project>
