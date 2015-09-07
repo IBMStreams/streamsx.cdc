@@ -36,6 +36,7 @@ import com.ibm.streams.operator.model.Icons;
 import com.ibm.streams.operator.model.InputPorts;
 import com.ibm.streams.operator.model.OutputPortSet;
 import com.ibm.streams.operator.model.Parameter;
+import com.ibm.streams.operator.model.Libraries;
 import com.ibm.streams.operator.model.OutputPortSet.WindowPunctuationOutputMode;
 import com.ibm.streams.operator.model.OutputPorts;
 import com.ibm.streams.operator.model.PrimitiveOperator;
@@ -70,10 +71,14 @@ import com.ibm.streams.operator.model.PrimitiveOperator;
  * stage, but the punctuation is forwarded dowstream.
  * </p>
  */
+
 @PrimitiveOperator(name = "CDCParse", namespace = "com.ibm.streamsx.cdc", description = "Operator which parses the incoming raw tuples and converts them into the output tuple specific for the table configured in the operator.")
 @InputPorts({ @InputPortSet(description = "Port that ingests tuples", cardinality = 1, optional = false, windowingMode = WindowMode.NonWindowed, windowPunctuationInputMode = WindowPunctuationInputMode.Oblivious) })
 @OutputPorts({ @OutputPortSet(description = "Port that produces tuples", cardinality = 1, optional = false, windowPunctuationOutputMode = WindowPunctuationOutputMode.Generating) })
 @Icons(location16 = "icons/CDCParse_16x16.png", location32 = "icons/CDCParse_32x32.png")
+@Libraries(value={"opt/downloaded/*"})
+
+
 public class CDCParse extends AbstractOperator {
 
 	private static Logger LOGGER = Logger.getLogger(CDCParse.class);
