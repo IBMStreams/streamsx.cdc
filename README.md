@@ -31,7 +31,9 @@ files and refer to them as a parameter in the subscription-level user exit. For 
 recommend to set the outputType property to "cdcsource"; this causes the user exit to try to connect to the CDCSource Streams
 operator.
 
-##Mapping tables
+##Getting started
+
+###Mapping tables
 First you must create a subscription referencing the source datastore and the target datastore. The target datastore must reference
 the CDC installation in which the CDCStreams user exit has been placed.
 Once the subscription has been created, right-click it and select "User Exit". Subsequently specify CDCStreams as the user exit
@@ -42,5 +44,5 @@ Map a table from source to target. Effectively, you do not need to have a target
 a "dummy" target table which will be used as the destination for each of the source tables; inserts, updates and deletes will
 be disabled by the user exit.
 
-When the table has been successfully mapped, specify CDCStreams as the user exit for the "before insert", "before update" and
+When the table has been successfully mapped, specify "CDCStreams" as the user exit for the "before insert", "before update" and
 "before delete" actions.
