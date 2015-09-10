@@ -21,7 +21,7 @@ composite ExportedXmlSample
 		{
 			param
 				file : "../etc/TableMapping.txt" ;
-				key : cdcMetadata.txTableName ;
+				key : txTableName ;
 		}
 
 		stream<cdcMetadataT cdcMetadata, rstring msisdn, rstring name,
