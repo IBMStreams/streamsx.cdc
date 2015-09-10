@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -11,8 +12,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import com.ibm.replication.cdc.scripting.EmbeddedScript;
@@ -76,9 +75,7 @@ import com.ibm.streams.operator.model.PrimitiveOperator;
 @InputPorts({ @InputPortSet(description = "Port that ingests tuples", cardinality = 1, optional = false, windowingMode = WindowMode.NonWindowed, windowPunctuationInputMode = WindowPunctuationInputMode.Oblivious) })
 @OutputPorts({ @OutputPortSet(description = "Port that produces tuples", cardinality = 1, optional = false, windowPunctuationOutputMode = WindowPunctuationOutputMode.Generating) })
 @Icons(location16 = "icons/CDCParse_16x16.png", location32 = "icons/CDCParse_32x32.png")
-@Libraries(value={"opt/downloaded/*"})
-
-
+@Libraries(value = { "opt/downloaded/*" })
 public class CDCParse extends AbstractOperator {
 
 	private static Logger LOGGER = Logger.getLogger(CDCParse.class);
@@ -408,7 +405,8 @@ public class CDCParse extends AbstractOperator {
 				+ outputTuple);
 		ArrayList<String> selectedColumns;
 		if (!getCdcExportXml().isEmpty())
-			selectedColumns = getColumnsFromExportXml();
+			selectedColumns = getColumnsFromExportXml(cdcExportXml,
+					qualifiedTableName);
 		else
 			selectedColumns = getColumnsFromChcclp();
 
@@ -486,13 +484,13 @@ public class CDCParse extends AbstractOperator {
 		Document document = dbf.newDocumentBuilder().parse(
 				new File(accessServerConnectionDocument));
 		Element rootElement = Utility.getRootElement(document);
-		String accessServerHost = Utility.getChildElementValue(rootElement,
+		String accessServerHost = Utility.getXMLAttributeValue(rootElement,
 				"Host");
-		String accessServerPort = Utility.getChildElementValue(rootElement,
+		String accessServerPort = Utility.getXMLAttributeValue(rootElement,
 				"Port");
-		String accessServerUser = Utility.getChildElementValue(rootElement,
+		String accessServerUser = Utility.getXMLAttributeValue(rootElement,
 				"User");
-		String accessServerPassword = Utility.getChildElementValue(rootElement,
+		String accessServerPassword = Utility.getXMLAttributeValue(rootElement,
 				"Password");
 		LOGGER.log(TraceLevel.TRACE,
 				"Found the following properties in the connection document: "
@@ -578,8 +576,9 @@ public class CDCParse extends AbstractOperator {
 	/**
 	 * Retrieves the selected columns from the selected table into an ArrayList.
 	 */
-	private ArrayList<String> getColumnsFromExportXml() throws SAXException,
-			IOException, ParserConfigurationException {
+	private ArrayList<String> getColumnsFromExportXml(String cdcExportXml,
+			String qualifiedTableName) throws SAXException, IOException,
+			ParserConfigurationException {
 		ArrayList<String> selectedColumns = new ArrayList<String>();
 		// Now parse the CDC Export XML document
 		LOGGER.log(TraceLevel.TRACE,
@@ -587,25 +586,39 @@ public class CDCParse extends AbstractOperator {
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 		Document document = dbf.newDocumentBuilder().parse(
 				new File(cdcExportXml));
-		NodeList tableMappings = Utility.getXmlTags(document, "TableMapping");
+
+		// First get the root element of the document, should be TS
+		Element docElement = Utility.getRootElement(document);
+
+		// Get the subscription element
+		Element subscriptionElement = Utility.getFirstChildElement(docElement,
+				"Subscription");
+		String subscriptionName = subscriptionElement.getAttribute("name");
+		LOGGER.log(TraceLevel.TRACE,
+				"Subscription name found in XML document: " + subscriptionName);
+
+		List<Element> tableMappings = Utility.getChildElementsByName(
+				subscriptionElement, "TableMapping");
 		boolean tableFound = false;
-		for (int t = 0; t < tableMappings.getLength(); t++) {
-			Node tableMapping = tableMappings.item(t);
-			String tableName = Utility.getXMLValue(tableMapping, "sourceUser")
-					+ "."
-					+ Utility.getXMLValue(tableMapping, "sourceTableName");
+		for (int t = 0; t < tableMappings.size(); t++) {
+			Element tableMapping = tableMappings.get(t);
+
+			String tableName = tableMapping.getAttribute("sourceUser") + "."
+					+ tableMapping.getAttribute("sourceTableName");
 			if (tableName.equalsIgnoreCase(qualifiedTableName)) {
 				tableFound = true;
 				LOGGER.log(TraceLevel.TRACE, "Found table mapping for table "
 						+ tableName);
-				NodeList columnMappings = Utility.getXmlTags(tableMapping,
-						"SourceColumn");
-				for (int c = 0; c < columnMappings.getLength(); c++) {
-					Node columnMapping = columnMappings.item(c);
-					String columnName = Utility.getXMLValue(columnMapping,
-							"columnName");
-					boolean columnSelected = Utility.getXMLValueAsBoolean(
-							columnMapping, "selected");
+
+				List<Element> sourceColumns = Utility.getChildElementsByName(
+						tableMapping, "SourceColumn");
+				for (int c = 0; c < sourceColumns.size(); c++) {
+					Element columnMapping = sourceColumns.get(c);
+					String columnName = Utility.getXMLAttributeValue(
+							columnMapping, "columnName");
+					boolean columnSelected = Utility
+							.getXMLAttributeValueAsBoolean(columnMapping,
+									"selected");
 					LOGGER.log(TraceLevel.TRACE, "Column found: " + columnName
 							+ ", selected: " + columnSelected);
 					if (columnSelected) {

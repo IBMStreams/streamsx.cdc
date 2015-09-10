@@ -1,10 +1,8 @@
 # Streams-specific excludes
-# toolkit.xml is excluded because it is built by Ant
-/toolkit.xml
 /.toolkitList
-/.project
 /.settings
 /output
+/opt
 
 # Java excludes
 *.class

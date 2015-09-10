@@ -8,12 +8,15 @@ import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Date;
+import java.util.Iterator;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
 import com.ibm.streams.operator.AbstractOperator;
 import com.ibm.streams.operator.OperatorContext;
 import com.ibm.streams.operator.OutputTuple;
+import com.ibm.streams.operator.StreamSchema;
 import com.ibm.streams.operator.StreamingData.Punctuation;
 import com.ibm.streams.operator.StreamingInput;
 import com.ibm.streams.operator.StreamingOutput;
@@ -60,6 +63,8 @@ import com.ibm.streams.operator.model.PrimitiveOperator;
 public class CDCSource extends AbstractOperator {
 
 	private static Logger LOGGER = Logger.getLogger(CDCSource.class);
+	
+	protected OperatorContext operatorContext;
 
 	protected ServerSocket serverSocket;
 	protected Socket connectionSocket;
@@ -123,22 +128,23 @@ public class CDCSource extends AbstractOperator {
 	/**
 	 * Initialize this operator. Called once before any tuples are processed.
 	 * 
-	 * @param context
+	 * @param operatorContext
 	 *            OperatorContext for this operator.
 	 * @throws Exception
 	 *             Operator failure, will cause the enclosing PE to terminate.
 	 */
 	@Override
-	public synchronized void initialize(OperatorContext context)
+	public synchronized void initialize(OperatorContext operatorContext)
 			throws Exception {
 		// Must call super.initialize(context) to correctly setup an operator.
-		super.initialize(context);
-		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName()
-				+ " initializing in PE: " + context.getPE().getPEId()
-				+ " in Job: " + context.getPE().getJobId());
-		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName()
+		super.initialize(operatorContext);
+		this.operatorContext = operatorContext;
+		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName()
+				+ " initializing in PE: " + operatorContext.getPE().getPEId()
+				+ " in Job: " + operatorContext.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName()
 				+ " listening at port number " + port);
-		hasInputPort = !context.getStreamingInputs().isEmpty();
+		hasInputPort = !operatorContext.getStreamingInputs().isEmpty();
 
 		// Start listening on the specified port
 		WaitForClient();
@@ -195,6 +201,19 @@ public class CDCSource extends AbstractOperator {
 	 */
 	private void produceTuples() throws Exception {
 		final StreamingOutput<OutputTuple> out = getOutput(0);
+		StreamSchema outputSchema = operatorContext.getStreamingOutputs()
+				.get(0).getStreamSchema();
+		String outputTuple = "<";
+		for (String attrName : outputSchema.getAttributeNames()) {
+			if (!outputTuple.equals("<"))
+				outputTuple += ", ";
+			outputTuple += outputSchema.getAttribute(attrName).getType()
+					.getLanguageType();
+			outputTuple += " " + attrName;
+		}
+		outputTuple += ">";
+		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCSource operator is "
+				+ outputTuple);
 		String messageReceived;
 		while (true) {
 
