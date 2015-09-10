@@ -1,0 +1,66 @@
+namespace com.ibm.streamsx.cdc.sample ;
+
+use com.ibm.streamsx.cdc::* ;
+
+composite ExportedXmlSample
+{
+	type
+		cdcMetadataT = rstring txTableName, rstring txTimestamp, rstring txId,
+			rstring txEntryType, rstring txUser ;
+		cdcDataT = rstring txTableName, rstring txTimestamp, rstring txId,
+			rstring txEntryType, rstring txUser, rstring data ;
+	graph
+		stream<cdcDataT> Ingest = CDCSource()
+		{
+			param
+				port : 12345 ;
+		}
+
+		(stream<cdcDataT> SplitCustThreshold ; stream<cdcDataT> SplitRatedCdr) =
+			Split(Ingest)
+		{
+			param
+				file : "../etc/TableMapping.txt" ;
+				key : cdcMetadata.txTableName ;
+		}
+
+		stream<cdcMetadataT cdcMetadata, rstring msisdn, rstring name,
+			rstring max_monthly_charge, rstring threshold_percentage>
+			ParseCustThreshold = CDCParse(SplitCustThreshold)
+		{
+			param
+				separator : "\\|" ;
+				cdcExportXml : "../etc/STRDB2.xml" ;
+				qualifiedTableName : "TELCO.CUST_THRESHOLD" ;
+				fillDeleteAfterImage : true ;
+		}
+
+		stream<cdcMetadataT cdcMetadata, rstring msisdna, rstring msisdnb,
+			rstring duration_secs, rstring cost> ParseRatedCdr = CDCParse(SplitRatedCdr)
+		{
+			param
+				separator : "\\|" ;
+				cdcExportXml : "../etc/STRDB2.xml" ;
+				qualifiedTableName : "TELCO.RATED_CDR" ;
+				fillDeleteAfterImage : true ;
+		}
+
+		() as DisplayCustThreshold = FileSink(ParseCustThreshold)
+		{
+			param
+				file : "/dev/stdout" ;
+				flush : 1u ;
+				writePunctuations : true ;
+				format : txt ;
+		}
+
+		() as DisplayRatedCdr = FileSink(ParseRatedCdr)
+		{
+			param
+				file : "/dev/stdout" ;
+				flush : 1u ;
+				writePunctuations : true ;
+				format : txt ;
+		}
+
+}

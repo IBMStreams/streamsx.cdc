@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<toolkitModel xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkit" productVersion="3.2.1.2" xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <toolkit name="ExportedXmlSample" requiredProductVersion="3.2.1.2" version="1.0.0">
+    <description/>
+    <uriTable>
+      <uri index="1" value="com.ibm.streamsx.cdc.sample/ExportedXmlSample.spl"/>
+    </uriTable>
+    <namespace name="com.ibm.streamsx.cdc.sample">
+      <compositeOp column="11" line="5" name="ExportedXmlSample" potentialMain="true" uriIndex="1">
+        <type column="3" line="8" name="cdcMetadataT" type="rstring txTableName, rstring txTimestamp, rstring txId, rstring txEntryType, rstring txUser" uriIndex="1"/>
+        <type column="3" line="10" name="cdcDataT" type="rstring txTableName, rstring txTimestamp, rstring txId, rstring txEntryType, rstring txUser, rstring data" uriIndex="1"/>
+      </compositeOp>
+    </namespace>
+    <dependency>
+      <common:name>com.ibm.streamx.cdc</common:name>
+      <common:version>1.0.0</common:version>
+    </dependency>
+  </toolkit>
+
+</toolkitModel>
