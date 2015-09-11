@@ -1,0 +1,21 @@
+# Streams-specific excludes
+/.toolkitList
+/.settings
+/output
+/opt
+
+# Java excludes
+*.class
+
+# exclude generated Java primitive operator model files
+
+# Package Files
+*.jar
+*.war
+*.ear
+
+# Temporary directories
+/tmp/
+
+# Windows thumb index file
+Thumbs.db

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+# Licensed Materials - Property of IBM
+# Copyright IBM Corp. 2015
+# US Government Users Restricted Rights - Use, duplication or
+# disclosure restricted by GSA ADP Schedule Contract with
+# IBM Corp.
+-->
+<project name="com.ibm.streamsx.cdc" basedir="." default="all">
+
+	<property environment="env" />
+	<fail unless="env.STREAMS_INSTALL" message="STREAMS_INSTALL not set." />
+	<fail unless="env.CDC_ACCESS_SERVER_HOME" message="CDC_ACCESS_SERVER_HOME not set. This toolkit requires the InfoSphere Data Replication CDC Access Server jar files. Please ensure that the Access Server jar files are available under $CDC_ACCESS_SERVER_HOME/lib." />
+	<property name="streams.install" value="${env.STREAMS_INSTALL}" />
+	<property name="cdc_as_lib.dir" value="${env.CDC_ACCESS_SERVER_HOME}/lib" />
+
+	<property name="src.dir" value="impl/java/src" />
+	<property name="build.dir" value="impl/java/classes" />
+	<property name="lib.dir" value="impl/lib" />
+
+	<target name="init">
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${lib.dir}" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+	</target>
+
+	<path id="cp.streams">
+		<pathelement location="${streams.install}/lib/com.ibm.streams.operator.jar" />
+		<pathelement location="${streams.install}/lib/com.ibm.streams.operator.samples.jar" />
+	</path>
+
+	<path id="cp.cdc_as">
+		<fileset dir="${cdc_as_lib.dir}">
+			<include name="**/*.jar" />
+		</fileset>
+	</path>
+
+	<target name="all" depends="jar">
+		<exec executable="${streams.install}/bin/spl-make-toolkit">
+			<arg value="--directory" />
+			<arg value="${basedir}" />
+		</exec>
+	</target>
+
+	<target name="compile" depends="init">
+		<javac srcdir="${src.dir}" destdir="${build.dir}" debug="true" includeantruntime="no">
+			<classpath>
+				<path refid="cp.streams" />
+				<path refid="cp.cdc_as" />
+			</classpath>
+		</javac>
+	</target>
+
+	<target name="jar" depends="compile">
+		<jar destfile="${lib.dir}/com.ibm.streamsx.cdc.jar" basedir="${build.dir}" includes="com/ibm/streamsx/cdc/**" filesonly="true" />
+		<delete dir="${build.dir}" />
+	</target>
+
+</project>
