@@ -2,7 +2,7 @@
 <info:toolkitInfoModel xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common"
  xmlns:info="http://www.ibm.com/xmlns/prod/streams/spl/toolkitInfo">
  <info:identity>
-   <info:name>com.ibm.streamx.cdc</info:name>
+   <info:name>com.ibm.streamsx.cdc</info:name>
    <info:description>This toolkit receives live streams from an InfoSphere Data Replication CDC subscription</info:description>
    <info:version>1.0.0</info:version>
    <info:requiredProductVersion>3.2.1.2</info:requiredProductVersion>
