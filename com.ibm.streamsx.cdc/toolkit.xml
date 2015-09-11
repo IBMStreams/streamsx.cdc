@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no" ?>
 <toolkitModel xmlns="http://www.ibm.com/xmlns/prod/streams/spl/toolkit" productVersion="3.2.1.2" xmlns:common="http://www.ibm.com/xmlns/prod/streams/spl/common" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 
-  <toolkit name="com.ibm.streamx.cdc" requiredProductVersion="3.2.1.2" version="1.0.0">
+  <toolkit name="com.ibm.streamxs.cdc" requiredProductVersion="3.2.1.2" version="1.0.0">
     <description>This toolkit receives live streams from an InfoSphere Data Replication CDC subscription</description>
     <uriTable>
       <uri index="5" value="com.ibm.streamsx.cdc/CDCParse/CDCParse_16x16.png"/>
