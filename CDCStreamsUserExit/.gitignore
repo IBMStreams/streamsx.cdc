@@ -1,6 +1,5 @@
 # Eclipse excludes
 /bin/
-/.project
 /.settings
 
 # Java excludes
