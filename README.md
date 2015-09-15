@@ -76,5 +76,5 @@ When the table has been successfully mapped, specify "CDCStreams" as the user ex
 
 Dependent on the target engine, the replication status will be set to either Refresh or Active. Plesae ensure that you select the proper replication status, dependent whether you want all records to be sent to the Streams application at the start of the subscription, or only replicate the changes from this moment on.
 
-### Creating your Streams application
+### Creating your Streams application 
 
