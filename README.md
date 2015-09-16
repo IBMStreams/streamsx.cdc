@@ -1,5 +1,5 @@
 # InfoSphere CDC Streams toolkit
-============
+==============
 
 This toolkit allows Streams to receive tuples from InfoSphere Change Data Capture. It provides a CDC Java user exit which allows subscriptions to push record changes to a Streams application and two Streams operators to respectively receive the incoming tuples and convert them into a tuple. The toolkit contains an example which demonstrates the use of the Streams operators.
 
