@@ -17,14 +17,24 @@
 	<property name="src.dir" value="impl/java/src" />
 	<property name="build.dir" value="impl/java/classes" />
 	<property name="lib.dir" value="impl/lib" />
+	<property name="cdc_as_tgt.dir" value="opt/downloaded" />
+
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+		<delete dir="${cdc_as_tgt.dir}" />
+	</target>
 
 	<target name="init">
 		<mkdir dir="${build.dir}" />
 		<mkdir dir="${lib.dir}" />
+		<mkdir dir="${cdc_as_tgt.dir}" />
 	</target>
 
-	<target name="clean">
-		<delete dir="${build.dir}" />
+	<target name="copyjar">
+		<copy todir="${cdc_as_tgt.dir}">
+			<fileset dir="${cdc_as_lib.dir}" />
+		</copy>
 	</target>
 
 	<path id="cp.streams">
@@ -33,7 +43,7 @@
 	</path>
 
 	<path id="cp.cdc_as">
-		<fileset dir="${cdc_as_lib.dir}">
+		<fileset dir="${cdc_as_tgt.dir}">
 			<include name="**/*.jar" />
 		</fileset>
 	</path>
@@ -45,7 +55,7 @@
 		</exec>
 	</target>
 
-	<target name="compile" depends="init">
+	<target name="compile" depends="init,copyjar">
 		<javac srcdir="${src.dir}" destdir="${build.dir}" debug="true" includeantruntime="no">
 			<classpath>
 				<path refid="cp.streams" />
