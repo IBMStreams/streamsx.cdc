@@ -1,4 +1,4 @@
-package com.ibm.streamsx.cdc;
+package com.ibm.streamsx.cdc; 
 
 import java.io.File;
 import java.io.IOException;

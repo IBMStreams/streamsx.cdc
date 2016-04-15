@@ -1,0 +1,5 @@
+namespace com.ibm.streamsx.cdc ;
+
+type cdcMetadataT = rstring txTableName, rstring txTimestamp, rstring txId,
+	rstring txEntryType, rstring txUser ;
+type cdcDataT = rstring data, cdcMetadataT cdcMetadata; 

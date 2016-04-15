@@ -19,7 +19,9 @@ import com.ibm.streams.operator.StreamingData.Punctuation;
 import com.ibm.streams.operator.StreamingInput;
 import com.ibm.streams.operator.StreamingOutput;
 import com.ibm.streams.operator.Tuple;
+import com.ibm.streams.operator.Type;
 import com.ibm.streams.operator.log4j.TraceLevel;
+import com.ibm.streams.operator.meta.TupleType;
 import com.ibm.streams.operator.model.Icons;
 import com.ibm.streams.operator.model.InputPortSet;
 import com.ibm.streams.operator.model.InputPortSet.WindowMode;
@@ -30,6 +32,7 @@ import com.ibm.streams.operator.model.OutputPortSet.WindowPunctuationOutputMode;
 import com.ibm.streams.operator.model.OutputPorts;
 import com.ibm.streams.operator.model.Parameter;
 import com.ibm.streams.operator.model.PrimitiveOperator;
+import com.ibm.streams.operator.types.RString;
 
 /**
  * A source operator that does not receive any input streams and produces new
@@ -61,7 +64,7 @@ import com.ibm.streams.operator.model.PrimitiveOperator;
 public class CDCSource extends AbstractOperator {
 
 	private static Logger LOGGER = Logger.getLogger(CDCSource.class);
-	
+
 	protected OperatorContext operatorContext;
 
 	protected ServerSocket serverSocket;
@@ -142,8 +145,24 @@ public class CDCSource extends AbstractOperator {
 				+ " in Job: " + operatorContext.getPE().getJobId());
 		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName()
 				+ " listening at port number " + port);
+		// Check if the CDCSource operator has an input port
 		hasInputPort = !operatorContext.getStreamingInputs().isEmpty();
-
+		// Get the output schema
+		StreamSchema outputSchema = operatorContext.getStreamingOutputs()
+				.get(0).getStreamSchema();
+		LOGGER.log(TraceLevel.TRACE,
+				"Type of output schema: " + outputSchema.getLanguageType());
+		String outputTuple = "<";
+		for (String attrName : outputSchema.getAttributeNames()) {
+			if (!outputTuple.equals("<"))
+				outputTuple += ", ";
+			outputTuple += outputSchema.getAttribute(attrName).getType()
+					.getLanguageType();
+			outputTuple += " " + attrName;
+		}
+		outputTuple += ">";
+		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCSource operator is "
+				+ outputTuple);
 		// Start listening on the specified port
 		WaitForClient();
 		/*
@@ -199,19 +218,6 @@ public class CDCSource extends AbstractOperator {
 	 */
 	private void produceTuples() throws Exception {
 		final StreamingOutput<OutputTuple> out = getOutput(0);
-		StreamSchema outputSchema = operatorContext.getStreamingOutputs()
-				.get(0).getStreamSchema();
-		String outputTuple = "<";
-		for (String attrName : outputSchema.getAttributeNames()) {
-			if (!outputTuple.equals("<"))
-				outputTuple += ", ";
-			outputTuple += outputSchema.getAttribute(attrName).getType()
-					.getLanguageType();
-			outputTuple += " " + attrName;
-		}
-		outputTuple += ">";
-		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCSource operator is "
-				+ outputTuple);
 		String messageReceived;
 		while (true) {
 
@@ -226,16 +232,23 @@ public class CDCSource extends AbstractOperator {
 				WaitForClient();
 				continue;
 			}
-			// char c=messageReceived.charAt(0);
+			// Get the metadata from the received string and populate the output
+			// tuple
 			String[] messageContent = messageReceived.split(metadataSeparator);
 			char recordType = messageContent[0].charAt(0);
-			OutputTuple tuple = out.newTuple();
-			tuple.setString("txTableName", messageContent[1]);
-			tuple.setString("txTimestamp", messageContent[2]);
-			tuple.setString("txId", "");
-			tuple.setString("txEntryType", "");
-			tuple.setString("txUser", "");
-			tuple.setString("data", "");
+			OutputTuple cdcDataTuple = out.newTuple();
+			StreamSchema metadataSchema = Type.Factory
+					.getStreamSchema("tuple<rstring txTableName,rstring txTimestamp,rstring txId, rstring txEntryType, rstring txUser>");
+			java.lang.Object[] metadataArray = {
+					new RString(messageContent[1]),
+					new RString(messageContent[2]),
+					new RString(messageContent[3]),
+					new RString(messageContent[4]),
+					new RString(messageContent[5]) };
+			Tuple cdcMetadata = metadataSchema.getTuple(metadataArray);
+			cdcDataTuple.setTuple("cdcMetadata", cdcMetadata);
+			cdcDataTuple.setString("data", "");
+			// Now populate the data
 			switch (recordType) {
 			case 'd':// Data
 				/*
@@ -244,11 +257,11 @@ public class CDCSource extends AbstractOperator {
 				 * rstring txUser rstring record itself
 				 */
 				LOGGER.log(TraceLevel.TRACE, "Data record received");
-				tuple.setString("txId", messageContent[3]);
-				tuple.setString("txEntryType", messageContent[4]);
-				tuple.setString("txUser", messageContent[5]);
-				tuple.setString("data", messageContent[6]);
-				out.submit(tuple);
+				// tuple.setString("txId", messageContent[3]);
+				// tuple.setString("txEntryType", messageContent[4]);
+				// tuple.setString("txUser", messageContent[5]);
+				cdcDataTuple.setString("data", messageContent[6]);
+				out.submit(cdcDataTuple);
 				break;
 			case 'c':// Commit
 				LOGGER.log(TraceLevel.TRACE, "Commit record received");
@@ -256,7 +269,7 @@ public class CDCSource extends AbstractOperator {
 				break;
 			case 'i':// Initialize
 				LOGGER.log(TraceLevel.TRACE, "Initialization tuple received");
-				out.submit(tuple);
+				out.submit(cdcDataTuple);
 				break;
 			case 'f':// Final
 				LOGGER.log(TraceLevel.TRACE, "Final tuple received");
