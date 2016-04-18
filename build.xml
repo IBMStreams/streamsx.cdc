@@ -10,7 +10,6 @@
 
 	<property environment="env" />
 	<fail unless="env.STREAMS_INSTALL" message="STREAMS_INSTALL not set." />
-	<fail unless="env.CDC_ACCESS_SERVER_HOME" message="CDC_ACCESS_SERVER_HOME not set. This toolkit requires the InfoSphere Data Replication CDC Access Server jar files. Please ensure that the Access Server jar files are available under $CDC_ACCESS_SERVER_HOME/lib." />
 	<fail unless="env.CDC_ENGINE_HOME" message="CDC_ENGINE_HOME not set. This toolkit requires the InfoSphere Data Replication CDC Access Server jar files. Please ensure that the CDC ts.jar file are available under $CDC_ENGINE_HOME/lib." />
 	<property name="streams.install" value="${env.STREAMS_INSTALL}" />
 
