@@ -28,7 +28,7 @@ import java.lang.reflect.Modifier;
 import java.util.Properties;
 
 public class UESettings {
-	private final String DEFAULT_PROPERTIES_FILENAME = "CDCStreams.properties";
+	private final String DEFAULT_PROPERTIES_FILENAME = "conf/CDCStreams.properties";
 
 	// Properties to be retrieved from the file
 	public String outputType = "tcpsource";

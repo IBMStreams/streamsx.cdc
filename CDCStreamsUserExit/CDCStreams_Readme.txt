@@ -47,7 +47,7 @@ subscription-level, the first handled operation will cause the subscription stop
 
 The configuration of the user exit is held in the CDCStreams.properties file. This, amongst others, defines the
 destination of the replicated changes (TCP/IP or named pipe) and also the column separator to be used. Please see
-the example CDCStreams.properties file for a full list of all properties.
+the example conf/CDCStreams.properties file for a full list of all properties.
 
 When targeting a TCP/IP port, the subscription-level user exit will attempt to connect to the defined host and port.
 If a connection cannot be established within the specified number of seconds (tcpConnectionTimeoutSeconds), a message

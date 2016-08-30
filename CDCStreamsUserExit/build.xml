@@ -6,14 +6,20 @@
 # disclosure restricted by GSA ADP Schedule Contract with
 # IBM Corp.
 -->
-<project name="CDCStreamsUserExit" basedir="." default="compile">
-
-	<property environment="env" />
-	<fail unless="env.CDC_ENGINE_HOME" message="CDC_ENGINE_HOME not set. This toolkit requires the InfoSphere Data Replication CDC Access Server jar files. Please ensure that the CDC ts.jar file are available under $CDC_ENGINE_HOME/lib." />
-	<property name="cdc_lib.dir" value="${env.CDC_ENGINE_HOME}/lib" />
-
+<project name="CDCStreamsUserExit" basedir="." default="jar">
+	
+	<loadproperties srcFile="conf/CDCStreams.properties">
+		<filterchain>
+			<linecontains>
+				<contains value="CDC_ENGINE_HOME" />
+			</linecontains>
+		</filterchain>
+	</loadproperties>
+	
+	<property name="cdc_lib.dir" value="${CDC_ENGINE_HOME}/lib" />
 	<property name="src.dir" value="src" />
-	<property name="build.dir" value="bin" />
+	<property name="build.dir" value="classes" />
+	<property name="lib.dir" value="lib" />
 
 	<target name="init">
 		<mkdir dir="${build.dir}" />
@@ -35,6 +41,44 @@
 				<path refid="cp.cdc" />
 			</classpath>
 		</javac>
+	</target>
+	
+	<target name="incrementBuild" depends="compile">
+		<tstamp>
+			<format property="buildDate" pattern="yyyy-MM-dd_HH.mm.ss_zzz" locale="en,IE" />
+		</tstamp>
+		<propertyfile file="conf/version.properties" comment="Build version info">
+			<entry key="buildDate" value="${buildDate}" />
+			<entry key="buildVersion" default="1" type="int" operation="=" />
+			<entry key="buildRelease" default="0" type="int" operation="=" />
+			<entry key="buildMod" default="0" type="int" operation="+" value="1" />
+		</propertyfile>
+		<replace file="conf/version.properties" token="@buildDate@" value="${buildDate}" />
+		<replace file="conf/version.properties" token="@buildVersion@" value="${buildVersion}" />
+		<replace file="conf/version.properties" token="@buildRelease@" value="${buildRelease}" />
+		<replace file="conf/version.properties" token="@buildMod@" value="${buildMod}" />
+	</target>
+
+	<target name="displayBuild" depends="incrementBuild">
+		<loadproperties srcFile="conf/version.properties" />
+		<echo>Build info: </echo>
+		<echo>Version: ${buildVersion}.${buildRelease}.${buildMod}</echo>
+		<echo>Date: ${buildDate}</echo>
+	</target>
+	
+	
+	<target name="jar" depends="displayBuild">
+		<manifest file="MANIFEST.MF">
+			<attribute name="Built-By" value="${user.name}" />
+			<attribute name="Implementation-Version" value="${buildVersion}.${buildRelease}.${buildMod}" />
+		</manifest>
+		
+		<jar destfile="${lib.dir}/CDC-Streams.jar" manifest="MANIFEST.MF">
+			<fileset dir="${build.dir}" />
+			<fileset dir="${src.dir}" includes="**/*.java" />
+		</jar>
+		<delete dir="${build.dir}" />
+		<delete file="MANIFEST.MF" />
 	</target>
 
 </project>

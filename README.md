@@ -1,30 +1,46 @@
 # InfoSphere CDC Streams toolkit
 ==============
 
-This toolkit allows Streams to receive tuples from InfoSphere Change Data Capture. It provides a CDC Java user exit which allows subscriptions to push record changes to a Streams application and two Streams operators to respectively receive the incoming tuples and convert them into a tuple. The toolkit contains an example which demonstrates the use of the Streams operators.
+This toolkit allows Streams to receive tuples from InfoSphere Data Replication Change Data Capture. It provides a CDC Java user exit which allows subscriptions to push record changes to a Streams application and two Streams operators to respectively receive the incoming tuples and convert them into a tuple. The toolkit contains an example which demonstrates the use of the Streams operators.
 
-## Building the toolkit
-The toolkit must be installed on a server that runs Streams. You must use Apache Ant to build the toolkit. Prior to running Ant, ensure that the required CDC jar files are available on the Streams server. We do not recommend installing the CDC engine and CDC Access Server on the Streams server, but rather copy the required components from the servers running the respective CDC components:
-* Download the toolkit as a zip file: https://github.com/IBMStreams/streamsx.cdc/archive/master.zip
-* Unpack the zip file into the directory that holds the Streams toolkits, typically $STREAMS_INSTALL/toolkits
-* Create a directory that holds the Access Server components, for example /tmp/CDCAccessServer
-* Copy the CDC Access Server lib folder to this directory
-* Set environment variable CDC_ACCESS_SERVER_HOME to the directory that contains the lib folder
-* Create a directory that holds the CDC Engine components, for example /tmp/CDCEngine
+## Installing the toolkit
+You can choose to either install the pre-built toolkit, or to build it yourself on the IBM Streams server using the ant tool. In either case, some manual steps are required to make the CDC jar files available on the Streams server. 
+
+One part of the toolkit, CDCStreamsUserExit, must be installed on the CDC server; this part contains the user exit which is to be configured for the CDC subscriptions. 
+
+The other component, com.ibm.streamsx.cdc, must be installed on the IBM Streams server and contains the CDCSource and CDCParse operators which can be incorporated into the Streams application.
+
+### Downloading the CDC Streams toolkit
+* Download the toolkit as a zip file: https://github.com/IBMStreams/streamsx.cdc/archive/master.zip into a temporary directory, for example /tmp
+* Unzip the master.zip file
+
+### Making the CDC jar files available on the Streams server
+To access the CDC configuration, the toolkit requires the jar files which are provided as part of the CDC Access Server.
+* Create a directory structure opt/downloaded, which will hold the Access Server jar files, under the CDC Streams toolkit, for example: mkdir -p /tmp/streamsx.cdc/com.ibm.streamsx.cdc/opt/downloaded
+* Copy the contents of the CDC Access Server lib folder (jar files) to the opt/downloaded directory
+
+Optionally, only if you plan to build (recompile) the toolkit, the CDC Engine jar files are needed to compile the user exit.
+* Create a directory that holds the CDC engine components, for example /tmp/CDCEngine
 * Copy the CDC Engine lib folder to this directory
-* Set environment variable CDC_ENGINE_HOME to the directory that contains the lib folder
-* Go to the toolkit's main directory that holds the build.xml file
+
+We do not recommend installing the CDC engine and CDC Access Server on the Streams server, but rather copy the required components from the servers CDC running the respective CDC components to the Streams server.
+
+### Optional: build the toolkit using ant
+* Set environment variable CDC_ENGINE_HOME to the directory that contains the CDC Engine's lib folder
+* Go to the toolkit's main directory that holds the build.xml file, for example: cdc /tmp/streamsx.cdc
 * Run ant
 
-## Enabling CDC to target a Streams application
-Once the toolkit has been built do the following:
-* Transfer the .properties and .class files under the CDCStreamsUserExit bin folder to the server running the CDC target engine
-* Place the properties file in the CDC installation directory
-* Place the class files in the lib directory of the CDC installation 
-* If you have replaced existing class files you must stop all subscriptions targeting the CDC instance in question and restart the instance  
+### Move the CDC Streams toolkit to the toolkit directory
+To register the toolkit in IBM Streams, it must be moved to a directory in the toolkit path.
+* Move the com.ibm.streamsx.cdc directory to $STREAMS_INSTALL/toolkits; this will make it visible to IBM Streams and Streams Studio
 
-## Configuration
-The behaviour of the CDC user exit is determined by the settings in CDCStreams.properties files. You can create multiple properties files and refer to them as a parameter in the subscription-level user exit. 
+### Enabling CDC to target a Streams application
+* Transfer the CDCStreamsUserExit folder to the CDC installation directory (_cdc-home_) on the target engine
+* Update the _cdc-home_/conf/system.cp file and add CDCStreamsUserExit/lib/CDCStreamsUserExit.jar to the classpath
+* Stop all subscriptions targeting the CDC instance in question and restart the instance 
+
+### Configuration
+The behaviour of the CDC Streams user exit is determined by the settings in CDCStreams.properties files, which is kept in the CDCStreamsUserExit folder. You can create multiple properties files and refer to them as a parameter in the subscription-level user exit.
 
 The most-important parameters to configure in the CDCStreams.properties file are:
 * outputType: Specifies the target of the user exit. For the tightest integration between CDC and Streams, we recommend to set this paramter to "cdcsource"; this causes the user exit to try to connect to the toolkit's CDCSource operator
@@ -37,7 +53,7 @@ First you must create a subscription referencing the source datastore and the ta
 
 ![01_create_subscription](https://cloud.githubusercontent.com/assets/8166955/9888416/430e68b8-5bf5-11e5-80a5-8e1de4f6c24e.PNG)
 
-Once the subscription has been created, right-click it and select "User Exit". Subsequently specify CDCStreams as the user exit name and optionally specify the name of the properties file that this subscription will use. If no parameter is specified, the default properties file CDCStreams.properties is assumed.
+Once the subscription has been created, right-click it and select "User Exit". Subsequently specify CDCStreams as the user exit name and optionally specify the name of the properties file that this subscription will use. If no parameter is specified, the default properties file _cdc-home_/CDCStreamsUserExit/CDCStreams.properties is assumed. By default, the user exit will attempt to find the properties file under the _cdc-home_/CDCStreamsUserExit folder.
 
 ![02_subscription_user_exit](https://cloud.githubusercontent.com/assets/8166955/9888417/43104868-5bf5-11e5-8489-71c6148242e5.PNG)
 
@@ -77,5 +93,22 @@ When the table has been successfully mapped, specify "CDCStreams" as the user ex
 Dependent on the target engine, the replication status will be set to either Refresh or Active. Plesae ensure that you select the proper replication status, dependent whether you want all records to be sent to the Streams application at the start of the subscription, or only replicate the changes from this moment on.
 
 ### Creating your Streams application 
+
+## Troubleshooting
+If you have issues replicating database transactions to your Streams application, you can validate the correct working of individual components.
+
+### Check the CDC event log and instance log messages
+If the CDCStreams user exit cannot post messages to the Streams applications, or if the subscriptions has not been configured correctly, error messages are issued in the subscription's target event log. You can find additional detailed messages in the instance log file (under _cdc-home_/instance/_instance_/log). Optionally, activate debugging for the user exit by setting debug=true in the CDCStreams.properties configuration file.
+
+### Testing the CDCStreams user exit
+The easiest way to validate that the CDCStreams user exit generates the correct data is by targeting a TCP/IP listener process that is started through the netcat tool. 
+* Change the CDCStreams.properties file and specify "tcpsource" for the outputType property 
+* Subsquently specify <host>:<port> (for example localhost:12345) for the tcpHostPort property
+* Once finished, start a netcat listener on the server you specified in the tcpHostPort property, for example: nc -l 12345
+* Start the CDC subscription. As soon as the subscription starts, it will first send an initialization entry to the listener. Optionally make some database changes to see them appear in the netcat listener
+* If no messages are received by the netcat listener, check the CDC instance log file (under _cdc-home_/instance/_instance_/log) for errors
+
+### Testing the Streams operators
+
 
 
