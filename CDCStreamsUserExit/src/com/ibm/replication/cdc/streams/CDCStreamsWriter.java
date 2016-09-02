@@ -17,8 +17,7 @@ import com.ibm.replication.cdc.common.*;
 
 public class CDCStreamsWriter {
 
-	private final SimpleDateFormat ISO_DATEFORMAT = new SimpleDateFormat(
-			"yyyy-MM-dd' 'HH:mm:ss.SSS'000'");
+	private final SimpleDateFormat ISO_DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss.SSS'000'");
 
 	Socket socket = null;
 	private PrintWriter printWriter;
@@ -40,15 +39,15 @@ public class CDCStreamsWriter {
 	public CDCStreamsWriter(UESettings settings, UETrace trace) throws UserExitException {
 
 		this.settings = settings;
-		this.trace=trace;
+		this.trace = trace;
 
 		try {
 			// Prepare for writing to TCP/IP socket or Named pipe
 			if (settings.outputType.equalsIgnoreCase("tcpsource")
 					|| settings.outputType.equalsIgnoreCase("cdcsource")) {
 				openWriterTCP();
-			} else if (settings.outputType.equalsIgnoreCase("namedpipe")
-					|| settings.outputType.equalsIgnoreCase("fifo")) {
+			} else
+				if (settings.outputType.equalsIgnoreCase("namedpipe") || settings.outputType.equalsIgnoreCase("fifo")) {
 				openWriterNamedPipe();
 			} else {
 				openWriterNull();
@@ -65,8 +64,7 @@ public class CDCStreamsWriter {
 	 * @throws IOException
 	 */
 	private void openWriterTCP() throws UserExitException, IOException {
-		trace.logEvent("User exit will write to InfoSphere Streams application on address "
-				+ settings.tcpHostPort);
+		trace.logEvent("User exit will write to InfoSphere Streams application on address " + settings.tcpHostPort);
 		String hostName = "";
 		int port = 0;
 		String[] tcpElements = settings.tcpHostPort.split(":");
@@ -81,8 +79,7 @@ public class CDCStreamsWriter {
 		trace.logEvent("Connecting to server " + hostName + ", port " + port);
 		InetSocketAddress socketAddress = new InetSocketAddress(hostName, port);
 		long beginTimestamp = System.currentTimeMillis();
-		long endTimestamp = beginTimestamp
-				+ (1000 * settings.tcpConnectionTimeoutSeconds);
+		long endTimestamp = beginTimestamp + (1000 * settings.tcpConnectionTimeoutSeconds);
 		long remainingTimeMillis = 0;
 		long waitMessage = endTimestamp - beginTimestamp;
 		// Try to connect iteratively until successful or timed out, send a
@@ -97,8 +94,7 @@ public class CDCStreamsWriter {
 				// Only send a message every 10 seconds
 				if (remainingTimeMillis < (waitMessage - 10000)) {
 					trace.logEvent("Waiting for server connection, timing out in "
-							+ ((endTimestamp - System.currentTimeMillis()) / 1000)
-							+ " seconds");
+							+ ((endTimestamp - System.currentTimeMillis()) / 1000) + " seconds");
 					waitMessage = remainingTimeMillis;
 				}
 				try {
@@ -109,10 +105,8 @@ public class CDCStreamsWriter {
 		}
 		if (socket.isConnected()) {
 			trace.logEvent("Connected to TCP address " + settings.tcpHostPort);
-			printWriter = new PrintWriter(new OutputStreamWriter(
-					socket.getOutputStream()));
-			feedbackStream = new BufferedReader(new InputStreamReader(
-					socket.getInputStream()));
+			printWriter = new PrintWriter(new OutputStreamWriter(socket.getOutputStream()));
+			feedbackStream = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 			// If the target is a CDCSource operator, wait until all its
 			// ports are ready
 			if (settings.outputType.equalsIgnoreCase("cdcsource")) {
@@ -122,17 +116,14 @@ public class CDCStreamsWriter {
 				if (feedbackString != null && feedbackString.startsWith("i")) {
 					trace.logEvent("CDCSource operator is ready to receive changes.");
 				} else {
-					throw new UserExitException(
-							"CDCSource operator did not report readiness within "
-									+ settings.initCDCSourceTimeoutSeconds
-									+ " seconds. Terminating abnormally");
+					throw new UserExitException("CDCSource operator did not report readiness within "
+							+ settings.initCDCSourceTimeoutSeconds + " seconds. Terminating abnormally");
 				}
 			}
 			// Now send string that CDC subscription has been initialized
 			doInit();
 		} else
-			throw new UserExitException("Connection to TCP address "
-					+ settings.tcpHostPort + " failed.");
+			throw new UserExitException("Connection to TCP address " + settings.tcpHostPort + " failed.");
 	}
 
 	/**
@@ -142,15 +133,12 @@ public class CDCStreamsWriter {
 	 * @throws IOException
 	 */
 	private void openWriterNamedPipe() throws UserExitException, IOException {
-		trace.logEvent("User exit will write to InfoSphere Streams application using named pipe "
-				+ settings.namedPipe);
+		trace.logEvent("User exit will write to InfoSphere Streams application using named pipe " + settings.namedPipe);
 		File fifoFile = new File(settings.namedPipe);
 		if (fifoFile.exists() && !fifoFile.isDirectory()) {
-			printWriter = new PrintWriter(new FileWriter(settings.namedPipe,
-					true));
+			printWriter = new PrintWriter(new FileWriter(settings.namedPipe, true));
 		} else
-			throw new UserExitException("Named pipe " + settings.namedPipe
-					+ " does not exist.");
+			throw new UserExitException("Named pipe " + settings.namedPipe + " does not exist.");
 
 	}
 
@@ -174,8 +162,7 @@ public class CDCStreamsWriter {
 			printWriter.write(printLine);
 			printWriter.write("\n");
 			if (printWriter.checkError()) {
-				throw new UserExitException("Error while writing record: "
-						+ printLine);
+				throw new UserExitException("Error while writing record: " + printLine);
 			}
 		}
 	}
@@ -189,8 +176,8 @@ public class CDCStreamsWriter {
 	 */
 	protected void doInit() throws UserExitException {
 		String currentTimeString = ISO_DATEFORMAT.format(new Date());
-		writeStreams("i" + settings.metadataSeparator + "***INITIALIZE***"
-				+ settings.metadataSeparator + currentTimeString);
+		writeStreams(
+				"i" + settings.metadataSeparator + "***INITIALIZE***" + settings.metadataSeparator + currentTimeString);
 	}
 
 	/**
@@ -199,12 +186,10 @@ public class CDCStreamsWriter {
 	 * @return
 	 * @throws UserExitException
 	 */
-	protected void doCommit(String transactionTimestamp, String transactionID)
-			throws UserExitException {
+	protected void doCommit(String transactionTimestamp, String transactionID) throws UserExitException {
 		trace.write("Sending commit to server");
-		writeStreams("c" + settings.metadataSeparator + "***COMMIT***"
-				+ settings.metadataSeparator + transactionTimestamp
-				+ settings.metadataSeparator + transactionID);
+		writeStreams("c" + settings.metadataSeparator + "***COMMIT***" + settings.metadataSeparator
+				+ transactionTimestamp + settings.metadataSeparator + transactionID);
 
 	}
 
@@ -218,8 +203,8 @@ public class CDCStreamsWriter {
 	protected boolean doHandshake() throws UserExitException {
 		boolean handshakeSuccessful = false;
 		String currentTimeString = ISO_DATEFORMAT.format(new Date());
-		writeStreams("h" + settings.metadataSeparator + "***HANDSHAKE***"
-				+ settings.metadataSeparator + currentTimeString);
+		writeStreams(
+				"h" + settings.metadataSeparator + "***HANDSHAKE***" + settings.metadataSeparator + currentTimeString);
 		// Only enforce handshake when sending to CDCSource Streams operator
 		if (settings.outputType.equalsIgnoreCase("cdcsource")) {
 			trace.write("Requesting handshake from Streams CDCSource operator");
@@ -228,17 +213,12 @@ public class CDCStreamsWriter {
 			if (feedback != null && feedback.startsWith("h")) {
 				handshakeSuccessful = true;
 				handshakeFailures = 0;
-			} else if (feedback.startsWith("t")) {
-				handshakeSuccessful = false;
 			} else {
 				handshakeFailures += 1;
 				if (handshakeFailures > settings.handshakeMaximumFailures) {
-					throw new UserExitException(
-							"CDCSource operator did not handshake after "
-									+ handshakeFailures
-									+ " attempts, maximum number of handshake failures of "
-									+ settings.handshakeMaximumFailures
-									+ " has been exceeded. Terminating abnormally");
+					throw new UserExitException("CDCSource operator did not handshake after " + handshakeFailures
+							+ " attempts, maximum number of handshake failures of " + settings.handshakeMaximumFailures
+							+ " has been exceeded. Terminating abnormally");
 				}
 			}
 		} else
@@ -255,8 +235,8 @@ public class CDCStreamsWriter {
 	protected void doFinalize() throws UserExitException {
 		trace.write("Sending finalize to server");
 		String currentTimeString = ISO_DATEFORMAT.format(new Date());
-		writeStreams("f" + settings.metadataSeparator + "***FINALIZE***"
-				+ settings.metadataSeparator + currentTimeString);
+		writeStreams(
+				"f" + settings.metadataSeparator + "***FINALIZE***" + settings.metadataSeparator + currentTimeString);
 	}
 
 	/**
@@ -275,8 +255,7 @@ public class CDCStreamsWriter {
 			socket.setSoTimeout(timeoutMs);
 			feedbackString = feedbackStream.readLine();
 		} catch (IOException e) {
-			trace.writeAlways("Feedback not received from server, message: "
-					+ e.getMessage());
+			trace.writeAlways("Feedback not received from server, message: " + e.getMessage());
 		}
 		return feedbackString;
 	}
