@@ -58,7 +58,7 @@ immediately.
 If you specify "debug=yes" in the properties file, detailed log information (including the received changes) are
 written to the current log file in the <cdc_home>/instance/<instance_name>/log directory.
 
-Compilation instructions
+Compilation instructions ### NEEDS TO BE REVIEWED, use Ant ###
 ------------------------
 The user exit has a dependency on the ts.jar file. To compile, do the following:
 javac -cp .:../lib/ts.jar UETrace.java 

@@ -23,12 +23,12 @@ package com.ibm.replication.cdc.common;
  *****************************************************************************/
 
 import java.io.*;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.util.Properties;
+import java.util.Set;
 
 public class UESettings {
-	private final String DEFAULT_PROPERTIES_FILENAME = "conf/CDCStreams.properties";
+	private final String DEFAULT_PROPERTIES_FILENAME = "CDCStreams.properties";
 
 	// Properties to be retrieved from the file
 	public String outputType = "tcpsource";
@@ -44,6 +44,8 @@ public class UESettings {
 	public int initCDCSourceTimeoutSeconds = 10;
 	public boolean debug = false;
 
+	UETrace trace = new UETrace(true, null);
+	
 	// Constructor
 	public UESettings(String propertiesFileName) {
 		if (propertiesFileName != null && !propertiesFileName.isEmpty())
@@ -54,15 +56,24 @@ public class UESettings {
 
 	// Load variables from the properties file
 	private void load(String propertiesFileName) {
+		
+		trace.writeAlways("Reading configuration from properties file " + propertiesFileName);
+		
 
 		Properties properties = new Properties();
-
+		
 		try {
-			FileInputStream fileIn = new FileInputStream(propertiesFileName);
-			properties.load(fileIn);
-			fileIn.close();
-		} catch (IOException e) {
-			e.printStackTrace();
+			URL fileURL = UESettings.class.getClassLoader().getResource(propertiesFileName);
+			trace.writeAlways("Resolved properties file: " + fileURL);
+			InputStream stream = UESettings.class.getClassLoader().getResourceAsStream(propertiesFileName);
+			properties.load(stream);
+			// Log all properties into the trace
+			Set<Object> propertiesKeys = properties.keySet();
+			for (Object key : propertiesKeys) {
+				trace.writeAlways(key + "=" + properties.getProperty((String) key));
+			}
+		} catch (Exception e) {
+			trace.writeAlways("Error processing properties from file " + propertiesFileName + ", message: " + e.getMessage());
 		}
 
 		outputType = properties.getProperty("outputType", outputType);
@@ -91,28 +102,6 @@ public class UESettings {
 		debug = Boolean.parseBoolean(properties.getProperty("debug",
 				Boolean.toString(debug)));
 
-		// Now that we have loaded the variables, output them to the IIDR event
-		// log
-		output(propertiesFileName);
-	}
-
-	// Output all variables retrieved from the properties file
-	private void output(String propertiesFileName) {
-		UETrace trace = new UETrace(true, null);
-		trace.writeAlways("Properties in file " + propertiesFileName + ":");
-		Field[] fields = this.getClass().getDeclaredFields();
-		for (Field field : fields) {
-			int fieldModifier = field.getModifiers();
-			if (Modifier.isPublic(fieldModifier)) {
-				try {
-					trace.writeAlways(field.getName() + ": " + field.get(this));
-				} catch (IllegalArgumentException e) {
-					e.printStackTrace();
-				} catch (IllegalAccessException e) {
-					e.printStackTrace();
-				}
-			}
-		}
 	}
 
 	// Main method, just for validating this class

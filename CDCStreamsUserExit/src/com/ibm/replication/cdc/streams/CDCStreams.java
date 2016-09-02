@@ -30,29 +30,6 @@ import com.ibm.replication.cdc.common.*;
  * application. Preferably, the user exit would be configured for a subscription going from a database to 
  * to one of the CDC database Java engines, including FlexRep, but it can also be configured for CDC Event Server,
  * albeit that it may be less efficient because every operation is followed by a commit with this engine.
- * 
- * Implementing the user exit must be done through the following steps:
- * - Copy all .class files to the <cdc_home>/lib directory of the target engine
- * - Copy the CDCStreams.properties to the <cdc_home> directory of the target engine; alternatively, you can
- *   copy it under a different name to facilitate different properties per subscription
- * - Modify the properties to match your Streams application's requirements
- * 
- * Once implemented, specify the user exit at the subscription level and at the before-insert, before-update and
- * before-delete operation user exit points. If you choose to use a different properties file as documented earlier,
- * specify this file at the subscription-level user exit point.
- * 
- * The user exit facilitates targeting a Streams application via the following mechanisms:
- * - Named pipe  - the user exit writes the changes, including the commit indicators and the handshakes to the
- *                 specified target (fifo) file.
- * - TCPSource   - the user exit connects to the Streams application via TCP/IP and the Streams application typically
- *                 receives the changes through the TCPSource operator. Commit indicators and handshakes are sent
- *                 but not enforced.
- * - CDCSource   - the user exit connects to the Streams application via TCP/IP and the Streams application receives
- *                 the changes through the CDCSource operator. Commit indicators and handshakes are sent to the
- *                 Streams application handshakes are enforced.
- * - Null        - Debugging only, changes are not sent to any target application. If debug=true, detail information
- *                 is written to the CDC instance logs.
- * 
  */
 public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 
