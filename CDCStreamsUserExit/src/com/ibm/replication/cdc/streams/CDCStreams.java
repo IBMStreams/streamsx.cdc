@@ -1,5 +1,8 @@
 package com.ibm.replication.cdc.streams;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /****************************************************************************
  ** Licensed Materials - Property of IBM
  ** IBM InfoSphere Change Data Capture
@@ -46,9 +49,10 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 	private UESettings settings;
 	private CDCStreamsWriter streamsWriter;
 	private String publisherID;
-	private String tablePath = null;
-	private String tableName = null;
 	private long currentTransactions;
+
+	private String txTableNameParm = null;
+	private String txTableName = null;
 
 	/**
 	 * Subscription-level initialization.
@@ -193,6 +197,15 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 
 		trace.writeAlways("Table-level init() start");
 
+		// Check if the txTableName parameter was passed to the user exit
+		String ueParameter = eventPublisher.getParameter();
+		Pattern txTableNamePattern = Pattern.compile("txTableName=(\\w+\\.\\w+)");
+		Matcher txTableNameMatcher = txTableNamePattern.matcher(ueParameter);
+		if (txTableNameMatcher.find()) {
+			txTableNameParm = txTableNameMatcher.group(1);
+			trace.writeAlways("txTableName parameter specified: " + txTableNameParm);
+		}
+
 		// Subscribe to Before-Insert/Update/Delete events
 		eventPublisher.unsubscribeEvent(ReplicationEventTypes.ALL_EVENTS);
 		eventPublisher.subscribeEvent(ReplicationEventTypes.BEFORE_INSERT_EVENT);
@@ -224,8 +237,13 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 		DataRecordIF beforeImage = replicationEvent.getSourceBeforeData();
 		DataRecordIF afterImage = replicationEvent.getSourceData();
 		if (firstTime) {
-			tablePath = replicationEvent.getJournalHeader().getLibrary();
-			tableName = replicationEvent.getJournalHeader().getObjectName();
+			if (txTableNameParm != null)
+				txTableName = txTableNameParm;
+			else {
+				txTableName = replicationEvent.getJournalHeader().getLibrary() + "."
+						+ replicationEvent.getJournalHeader().getObjectName();
+			}
+
 			DataRecordIF image = (afterImage != null) ? afterImage : beforeImage;
 			// Generate the empty before image and empty after image based on
 			// the number of table columns replicated
@@ -240,7 +258,7 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 			trace.write("Empty image: " + emptyBeforeImage);
 			firstTime = false;
 		}
-		trace.write("Table: " + tablePath + "." + tableName);
+		trace.write("Table: " + txTableName);
 		trace.write("Timestamp: " + subscriptionContext.currentTransactionTimestamp);
 		trace.write("Transaction ID: " + subscriptionContext.currentTransactionID);
 		trace.write("Operation type: " + entryType);
@@ -250,7 +268,7 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 		// respectively the fully qualified table name, the timestamp of the
 		// commit, the transaction ID at the source, the type of operation and
 		// finally the user who did the operation at the source
-		String printLine = ("d" + settings.metadataSeparator + tablePath + "." + tableName + settings.metadataSeparator
+		String printLine = ("d" + settings.metadataSeparator + txTableName + settings.metadataSeparator
 				+ subscriptionContext.currentTransactionTimestamp + settings.metadataSeparator
 				+ subscriptionContext.currentTransactionID + settings.metadataSeparator + entryType
 				+ settings.metadataSeparator + transactionUser + settings.metadataSeparator);
