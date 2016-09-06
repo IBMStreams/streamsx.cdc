@@ -14,8 +14,33 @@ public class Utility {
 	/**
 	 * ISO timestamp format
 	 */
-	public static final SimpleDateFormat ISO_DATEFORMAT = new SimpleDateFormat(
-			"yyyy-MM-dd' 'HH:mm:ss.SSS'000'");
+	public static final SimpleDateFormat ISO_DATEFORMAT = new SimpleDateFormat("yyyy-MM-dd' 'HH:mm:ss.SSS'000'");
+
+	static Node getNode(NodeList nodes, String tagName) {
+		for (int x = 0; x < nodes.getLength(); x++) {
+			Node node = nodes.item(x);
+			if (node.getNodeName().equalsIgnoreCase(tagName)) {
+				return node;
+			}
+		}
+
+		return null;
+	}
+
+	static String getNodeValue(NodeList nodes, String tagName) {
+		for (int x = 0; x < nodes.getLength(); x++) {
+			Node node = nodes.item(x);
+			if (node.getNodeName().equalsIgnoreCase(tagName)) {
+				NodeList childNodes = node.getChildNodes();
+				for (int y = 0; y < childNodes.getLength(); y++) {
+					Node data = childNodes.item(y);
+					if (data.getNodeType() == Node.TEXT_NODE)
+						return data.getNodeValue();
+				}
+			}
+		}
+		return "";
+	}
 
 	/**
 	 * Get root element of XML file
@@ -53,17 +78,34 @@ public class Utility {
 	 * @return A list of children elements. If no elements of the specified tag
 	 *         name are found, an empty list is returned.
 	 */
-	public static List<Element> getChildElementsByName(Element parent,
-			String tagName) {
+	public static List<Element> getChildElementsByName(Element parent, String tagName) {
 		List<Element> elementList = new LinkedList<Element>();
 		NodeList children = parent.getChildNodes();
 		for (int c = 0; c < children.getLength(); c++) {
-			if (children.item(c).getNodeType() == Node.ELEMENT_NODE
-					&& children.item(c).getNodeName().equals(tagName)) {
+			if (children.item(c).getNodeType() == Node.ELEMENT_NODE && children.item(c).getNodeName().equals(tagName)) {
 				elementList.add((Element) children.item(c));
 			}
 		}
 		return elementList;
+	}
+
+	/**
+	 * Return the first child element for the given tag name
+	 * 
+	 * @param parent
+	 *            The element from which the children elements must be
+	 *            retrieved.
+	 * @param tagName
+	 *            The tag name of the children element that must be retrieved
+	 * @return One child element. If no elements of the specified tag name are
+	 *         found, null is returned.
+	 */
+	public static Element getFirstChildElementByName(Element parent, String tagName) {
+		List<Element> elementList = getChildElementsByName(parent, tagName);
+		if (!elementList.isEmpty())
+			return elementList.get(0);
+		else
+			return null;
 	}
 
 	/**
@@ -88,8 +130,7 @@ public class Utility {
 	 *            Name of the boolean attribute
 	 * @return
 	 */
-	public static boolean getXMLAttributeValueAsBoolean(Element node,
-			String attributeName) {
+	public static boolean getXMLAttributeValueAsBoolean(Element node, String attributeName) {
 		return Boolean.parseBoolean(getXMLAttributeValue(node, attributeName));
 	}
 
