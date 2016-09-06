@@ -88,7 +88,7 @@ Specifies command-line arguments that are passed to the Java virtual machine tha
         </outputPort>
       </primitiveOp>
       <type column="6" line="3" name="cdcMetadataT" static="true" type="rstring txTableName, rstring txTimestamp, rstring txId, rstring txEntryType, rstring txUser" uriIndex="1"/>
-      <type column="6" line="5" name="cdcDataT" static="true" type="rstring data, cdcMetadataT cdcMetadata" uriIndex="1"/>
+      <type column="6" line="5" name="cdcDataT" static="true" type="cdcMetadataT cdcMetadata, rstring data" uriIndex="1"/>
     </namespace>
     <sabFiles>
       <ti:include path="toolkit.xml" root="toolkitDir"/>

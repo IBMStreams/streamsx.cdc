@@ -1,4 +1,4 @@
-package com.ibm.streamsx.cdc; 
+package com.ibm.streamsx.cdc;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +12,8 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import com.ibm.replication.cdc.scripting.EmbeddedScript;
@@ -37,6 +39,7 @@ import com.ibm.streams.operator.model.OutputPortSet;
 import com.ibm.streams.operator.model.Parameter;
 import com.ibm.streams.operator.model.Libraries;
 import com.ibm.streams.operator.model.OutputPortSet.WindowPunctuationOutputMode;
+import com.sun.org.apache.xerces.internal.parsers.DOMParser;
 import com.ibm.streams.operator.model.OutputPorts;
 import com.ibm.streams.operator.model.PrimitiveOperator;
 
@@ -72,13 +75,17 @@ import com.ibm.streams.operator.model.PrimitiveOperator;
  */
 
 @PrimitiveOperator(name = "CDCParse", namespace = "com.ibm.streamsx.cdc", description = "Operator which parses the incoming raw tuples and converts them into the output tuple specific for the table configured in the operator.")
-@InputPorts({ @InputPortSet(description = "Port that ingests tuples", cardinality = 1, optional = false, windowingMode = WindowMode.NonWindowed, windowPunctuationInputMode = WindowPunctuationInputMode.Oblivious) })
-@OutputPorts({ @OutputPortSet(description = "Port that produces tuples", cardinality = 1, optional = false, windowPunctuationOutputMode = WindowPunctuationOutputMode.Generating) })
+@InputPorts({
+		@InputPortSet(description = "Port that ingests tuples", cardinality = 1, optional = false, windowingMode = WindowMode.NonWindowed, windowPunctuationInputMode = WindowPunctuationInputMode.Oblivious) })
+@OutputPorts({
+		@OutputPortSet(description = "Port that produces tuples", cardinality = 1, optional = false, windowPunctuationOutputMode = WindowPunctuationOutputMode.Generating) })
 @Icons(location16 = "icons/CDCParse_16x16.png", location32 = "icons/CDCParse_32x32.png")
 @Libraries(value = { "opt/downloaded/*" })
 public class CDCParse extends AbstractOperator {
 
 	private static Logger LOGGER = Logger.getLogger(CDCParse.class);
+
+	boolean invalidTableMessageSent = false;
 
 	protected OperatorContext operatorContext;
 	/**
@@ -130,8 +137,7 @@ public class CDCParse extends AbstractOperator {
 	protected String accessServerConnectionDocument = "";
 
 	@Parameter(description = "XML document with connection information to Access Server", name = "accessServerConnectionDocument", optional = true)
-	public void setAccessServerConnectionDocument(
-			String accessServerConnectionDocument) {
+	public void setAccessServerConnectionDocument(String accessServerConnectionDocument) {
 		this.accessServerConnectionDocument = accessServerConnectionDocument;
 	}
 
@@ -248,39 +254,30 @@ public class CDCParse extends AbstractOperator {
 	 *             Operator failure, will cause the enclosing PE to terminate.
 	 */
 	@Override
-	public synchronized void initialize(OperatorContext operatorContext)
-			throws Exception {
+	public synchronized void initialize(OperatorContext operatorContext) throws Exception {
 		// Must call super.initialize(context) to correctly setup an operator.
 		super.initialize(operatorContext);
 		this.operatorContext = operatorContext;
-		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName()
-				+ " initializing in PE: " + operatorContext.getPE().getPEId()
-				+ " in Job: " + operatorContext.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName() + " initializing in PE: "
+				+ operatorContext.getPE().getPEId() + " in Job: " + operatorContext.getPE().getJobId());
 		// Check that not both accessServerConnectionDocument and cdcExportXml
 		// parameters have been specified.
-		if (!getAccessServerConnectionDocument().isEmpty()
-				&& !getCdcExportXml().isEmpty())
-			throw new Exception(
-					"Parameters accessServerConnectionDocument and cdcExportXml"
-							+ " must not both be specified in the CDCParse operator.");
+		if (!getAccessServerConnectionDocument().isEmpty() && !getCdcExportXml().isEmpty())
+			throw new Exception("Parameters accessServerConnectionDocument and cdcExportXml"
+					+ " must not both be specified in the CDCParse operator.");
 		// Check that dataStore is specified if
 		// accessServerConnectionDocument is specified.
-		if (!getAccessServerConnectionDocument().isEmpty()
-				&& dataStore.isEmpty())
+		if (!getAccessServerConnectionDocument().isEmpty() && dataStore.isEmpty())
 			throw new Exception(
-					"DataStore must be specified if the mapped columns are to be"
-							+ " retrieved through CHCCLP.");
+					"DataStore must be specified if the mapped columns are to be" + " retrieved through CHCCLP.");
 		// Check that subscription is specified if
 		// accessServerConnectionDocument is specified.
-		if (!getAccessServerConnectionDocument().isEmpty()
-				&& subscription.isEmpty())
+		if (!getAccessServerConnectionDocument().isEmpty() && subscription.isEmpty())
 			throw new Exception(
-					"Subscription must be specified if the mapped columns are to be"
-							+ " retrieved through CHCCLP.");
+					"Subscription must be specified if the mapped columns are to be" + " retrieved through CHCCLP.");
 		// Now, map the table columns to the tuple fields
 		mapColumnsToTuple();
-		LOGGER.log(TraceLevel.TRACE,
-				"CDCParse operator initialized, ready to receive tuples");
+		LOGGER.log(TraceLevel.TRACE, "CDCParse operator initialized, ready to receive tuples");
 	}
 
 	/**
@@ -296,9 +293,8 @@ public class CDCParse extends AbstractOperator {
 		// Operators that process incoming tuples generally do not need this
 		// notification.
 		OperatorContext context = getOperatorContext();
-		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName()
-				+ " all ports are ready in PE: " + context.getPE().getPEId()
-				+ " in Job: " + context.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName() + " all ports are ready in PE: "
+				+ context.getPE().getPEId() + " in Job: " + context.getPE().getJobId());
 	}
 
 	/**
@@ -316,16 +312,17 @@ public class CDCParse extends AbstractOperator {
 	 *             Operator failure, will cause the enclosing PE to terminate.
 	 */
 	@Override
-	public final void process(StreamingInput<Tuple> inputStream, Tuple tuple)
-			throws Exception {
+	public final void process(StreamingInput<Tuple> inputStream, Tuple tuple) throws Exception {
 
 		// Create a new tuple for output port 0
 		StreamingOutput<OutputTuple> outStream = getOutput(0);
 		OutputTuple outTuple = outStream.newTuple();
 		LOGGER.log(TraceLevel.TRACE, "Processing " + tuple);
 
+		Tuple cdcMetadata = tuple.getTuple(0);
+
 		// Check that the tuple table matches the configured table name.
-		String txTableName = tuple.getString("txTableName");
+		String txTableName = cdcMetadata.getString("txTableName");
 		if (txTableName.startsWith("*")) {
 			// If the subscription has been restarted, update the
 			// column-to-tuple mapping
@@ -342,7 +339,7 @@ public class CDCParse extends AbstractOperator {
 			// If the before image of the delete record must populate the
 			// regular fields, do so
 			if (fillDeleteAfterImage) {
-				if (tuple.getString("txEntryType").equals("D")) {
+				if (cdcMetadata.getString("txEntryType").equals("D")) {
 					for (String k : outputDeletedRecord.keySet()) {
 						outTuple.setString(k, data[outputDeletedRecord.get(k)]);
 					}
@@ -351,9 +348,15 @@ public class CDCParse extends AbstractOperator {
 			// Submit new tuple to output port 0
 			outStream.submit(outTuple);
 		} else {
-			LOGGER.log(TraceLevel.ERROR, "Invalid table name " + txTableName
-					+ " received by CDCParse operator. Expected table "
-					+ qualifiedTableName);
+			if (!invalidTableMessageSent) {
+				LOGGER.log(TraceLevel.WARN,
+						"CDCParse operator received a data record for an out of scope table (" + txTableName
+								+ "), while expecting entries for table " + qualifiedTableName
+								+ ". Out of scope tuples are ignored by CDCParse. Consider using a Split operator "
+								+ "to prevent out of scope tuples being handled by CDCParse. "
+								+ "No more warnings regarding out of scope tuples will be sent.");
+				invalidTableMessageSent = true;
+			}
 		}
 	}
 
@@ -368,8 +371,7 @@ public class CDCParse extends AbstractOperator {
 	 *             Operator failure, will cause the enclosing PE to terminate.
 	 */
 	@Override
-	public void processPunctuation(StreamingInput<Tuple> stream,
-			Punctuation mark) throws Exception {
+	public void processPunctuation(StreamingInput<Tuple> stream, Punctuation mark) throws Exception {
 		// For window markers, punctuate all output ports
 		super.processPunctuation(stream, mark);
 	}
@@ -382,31 +384,26 @@ public class CDCParse extends AbstractOperator {
 	 */
 	public synchronized void shutdown() throws Exception {
 		OperatorContext context = getOperatorContext();
-		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName()
-				+ " shutting down in PE: " + context.getPE().getPEId()
-				+ " in Job: " + context.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName() + " shutting down in PE: "
+				+ context.getPE().getPEId() + " in Job: " + context.getPE().getJobId());
 		// Must call super.shutdown()
 		super.shutdown();
 	}
 
 	private void mapColumnsToTuple() throws Exception {
-		StreamSchema outputSchema = operatorContext.getStreamingOutputs()
-				.get(0).getStreamSchema();
+		StreamSchema outputSchema = operatorContext.getStreamingOutputs().get(0).getStreamSchema();
 		String outputTuple = "<";
 		for (String attrName : outputSchema.getAttributeNames()) {
 			if (!outputTuple.equals("<"))
 				outputTuple += ", ";
-			outputTuple += outputSchema.getAttribute(attrName).getType()
-					.getLanguageType();
+			outputTuple += outputSchema.getAttribute(attrName).getType().getLanguageType();
 			outputTuple += " " + attrName;
 		}
 		outputTuple += ">";
-		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCParse operator is "
-				+ outputTuple);
+		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCParse operator is " + outputTuple);
 		ArrayList<String> selectedColumns;
 		if (!getCdcExportXml().isEmpty())
-			selectedColumns = getColumnsFromExportXml(cdcExportXml,
-					qualifiedTableName);
+			selectedColumns = getColumnsFromExportXml(cdcExportXml, qualifiedTableName);
 		else
 			selectedColumns = getColumnsFromChcclp();
 
@@ -416,25 +413,19 @@ public class CDCParse extends AbstractOperator {
 		int p = 0;
 		// First map the before image columns
 		for (int i = 0; i < selectedColumns.size(); i++) {
-			Attribute attr = outputSchema.getAttribute(beforeImagePrefix
-					+ selectedColumns.get(i));
+			Attribute attr = outputSchema.getAttribute(beforeImagePrefix + selectedColumns.get(i));
 			if (attr != null) {
-				LOGGER.log(
-						TraceLevel.TRACE,
-						"Table column "
-								+ selectedColumns.get(i)
-								+ " (before image) is mapped to tuple attribute "
-								+ attr.getName());
+				LOGGER.log(TraceLevel.TRACE, "Table column " + selectedColumns.get(i)
+						+ " (before image) is mapped to tuple attribute " + attr.getName());
 				outputData.put(attr.getName(), new Integer(p));
 			}
 			// Prepare column mapping for delete-image
 			if (fillDeleteAfterImage) {
 				attr = outputSchema.getAttribute(selectedColumns.get(i));
 				if (attr != null) {
-					LOGGER.log(TraceLevel.TRACE, "Table column "
-							+ selectedColumns.get(i)
-							+ " (before image) is mapped to tuple attribute "
-							+ attr.getName() + " for the delete image");
+					LOGGER.log(TraceLevel.TRACE,
+							"Table column " + selectedColumns.get(i) + " (before image) is mapped to tuple attribute "
+									+ attr.getName() + " for the delete image");
 					outputDeletedRecord.put(attr.getName(), new Integer(p));
 				}
 			}
@@ -442,15 +433,10 @@ public class CDCParse extends AbstractOperator {
 		}
 		// Then map the after image columns
 		for (int i = 0; i < selectedColumns.size(); i++) {
-			Attribute attr = outputSchema.getAttribute(afterImagePrefix
-					+ selectedColumns.get(i));
+			Attribute attr = outputSchema.getAttribute(afterImagePrefix + selectedColumns.get(i));
 			if (attr != null) {
-				LOGGER.log(
-						TraceLevel.TRACE,
-						"Table column "
-								+ selectedColumns.get(i)
-								+ " (after image) is mapped to tuple attribute "
-								+ attr.getName());
+				LOGGER.log(TraceLevel.TRACE, "Table column " + selectedColumns.get(i)
+						+ " (after image) is mapped to tuple attribute " + attr.getName());
 				outputData.put(attr.getName(), new Integer(p));
 			}
 			p++;
@@ -465,11 +451,8 @@ public class CDCParse extends AbstractOperator {
 				else
 					checkColumn = attrName;
 				if (outputData.get(checkColumn) == null) {
-					LOGGER.log(
-							TraceLevel.WARN,
-							"Output tuple attribute "
-									+ attrName
-									+ " is not mapped to any of the replicated columns, values will be empty.");
+					LOGGER.log(TraceLevel.WARN, "Output tuple attribute " + attrName
+							+ " is not mapped to any of the replicated columns, values will be empty.");
 				}
 			}
 		}
@@ -478,36 +461,32 @@ public class CDCParse extends AbstractOperator {
 	private ArrayList<String> getColumnsFromChcclp() throws Exception {
 		ArrayList<String> selectedColumns = new ArrayList<String>();
 		// Now parse the Access Server Connection document
-		LOGGER.log(TraceLevel.TRACE, "Parsing connection document "
-				+ accessServerConnectionDocument);
-		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-		Document document = dbf.newDocumentBuilder().parse(
-				new File(accessServerConnectionDocument));
-		Element rootElement = Utility.getRootElement(document);
-		String accessServerHost = Utility.getXMLAttributeValue(rootElement,
-				"Host");
-		String accessServerPort = Utility.getXMLAttributeValue(rootElement,
-				"Port");
-		String accessServerUser = Utility.getXMLAttributeValue(rootElement,
-				"User");
-		String accessServerPassword = Utility.getXMLAttributeValue(rootElement,
-				"Password");
+		LOGGER.log(TraceLevel.TRACE, "Parsing connection document " + accessServerConnectionDocument);
+		DOMParser parser = new DOMParser();
+		parser.parse(accessServerConnectionDocument);
+		Document document = parser.getDocument();
+		NodeList root = document.getChildNodes();
+
+		Node accessServerNode = Utility.getNode(root, "AccessServer");
+		NodeList accessServerParameter = accessServerNode.getChildNodes();
+
+		String accessServerHost = Utility.getNodeValue(accessServerParameter, "Host");
+		String accessServerPort = Utility.getNodeValue(accessServerParameter, "Port");
+		String accessServerUser = Utility.getNodeValue(accessServerParameter, "User");
+		String accessServerPassword = Utility.getNodeValue(accessServerParameter, "Password");
+
 		LOGGER.log(TraceLevel.TRACE,
-				"Found the following properties in the connection document: "
-						+ "Host=" + accessServerHost + ", Port="
-						+ accessServerPort + ", User=" + accessServerUser
-						+ ", Password=" + accessServerPassword);
+				"Found the following properties in the connection document: " + "Host=" + accessServerHost + ", Port="
+						+ accessServerPort + ", User=" + accessServerUser + ", Password=" + accessServerPassword);
 		boolean tableFound = false;
 		EmbeddedScript script = new EmbeddedScript();
 		Result result;
 		try {
 			script.open();
-			scriptExecute(script, "connect server hostname " + accessServerHost
-					+ " username " + accessServerUser + " password "
-					+ accessServerPassword);
+			scriptExecute(script, "connect server hostname " + accessServerHost + " port " + accessServerPort
+					+ " username " + accessServerUser + " password " + accessServerPassword);
 			scriptExecute(script, "connect datastore name " + getDataStore());
-			scriptExecute(script, "select subscription name "
-					+ getSubscription());
+			scriptExecute(script, "select subscription name " + getSubscription());
 			scriptExecute(script, "list table mappings");
 			result = script.getResult();
 			if (result.getType() == Result.TABLE) {
@@ -516,26 +495,19 @@ public class CDCParse extends AbstractOperator {
 					String qualifiedTable = table.getValueAt(i, 0);
 					// If the mapped source table matches the qualifiedTableName
 					// parameter, retrieve the columns
-					if (qualifiedTable
-							.equalsIgnoreCase(getQualifiedTableName())) {
+					if (qualifiedTable.equalsIgnoreCase(getQualifiedTableName())) {
 						tableFound = true;
-						LOGGER.log(TraceLevel.TRACE, "Table " + qualifiedTable
-								+ " found in the subscription");
-						scriptExecute(
-								script,
-								"select table mapping sourceSchema "
-										+ qualifiedTable.split("[.]")[0]
-										+ " sourceTable "
-										+ qualifiedTable.split("[.]")[1]);
+						LOGGER.log(TraceLevel.TRACE, "Table " + qualifiedTable + " found in the subscription");
+						scriptExecute(script, "select table mapping sourceSchema " + qualifiedTable.split("[.]")[0]
+								+ " sourceTable " + qualifiedTable.split("[.]")[1]);
 						scriptExecute(script, "list source columns");
 						result = script.getResult();
 						ResultStringTable columns = (ResultStringTable) result;
 						for (int c = 0; c < columns.getRowCount(); c++) {
 							String columnName = columns.getValueAt(c, 0);
 							String columnSelected = columns.getValueAt(c, 3);
-							LOGGER.log(TraceLevel.TRACE, "Column found: "
-									+ columnName + ", selected: "
-									+ columnSelected);
+							LOGGER.log(TraceLevel.TRACE,
+									"Column found: " + columnName + ", selected: " + columnSelected);
 							if (columnSelected.equalsIgnoreCase("Yes")) {
 								selectedColumns.add(columnName);
 							}
@@ -545,26 +517,20 @@ public class CDCParse extends AbstractOperator {
 			}
 			script.close();
 		} catch (Exception ese) {
-			LOGGER.log(
-					TraceLevel.ERROR,
+			LOGGER.log(TraceLevel.ERROR,
 					"Error while retrieving mapped columns through CHCCLP scripting. See previous messages for details.");
 			throw new Exception(
 					"Error while retrieving mapped columns through CHCCLP scripting. See previous messages for details.");
 		}
 		if (!tableFound)
-			LOGGER.log(
-					TraceLevel.WARN,
-					"Table mapping for table "
-							+ qualifiedTableName
-							+ " not found in datastore, no tuples for this table will be processed");
+			LOGGER.log(TraceLevel.WARN, "Table mapping for table " + qualifiedTableName
+					+ " not found in datastore, no tuples for this table will be processed");
 
 		return selectedColumns;
 	}
 
-	private void scriptExecute(EmbeddedScript script, String chcclpCommand)
-			throws Exception {
-		LOGGER.log(TraceLevel.TRACE, "Executing CHCCLP command: "
-				+ chcclpCommand);
+	private void scriptExecute(EmbeddedScript script, String chcclpCommand) throws Exception {
+		LOGGER.log(TraceLevel.TRACE, "Executing CHCCLP command: " + chcclpCommand);
 		try {
 			script.execute(chcclpCommand);
 		} catch (EmbeddedScriptException e) {
@@ -576,29 +542,23 @@ public class CDCParse extends AbstractOperator {
 	/**
 	 * Retrieves the selected columns from the selected table into an ArrayList.
 	 */
-	private ArrayList<String> getColumnsFromExportXml(String cdcExportXml,
-			String qualifiedTableName) throws SAXException, IOException,
-			ParserConfigurationException {
+	private ArrayList<String> getColumnsFromExportXml(String cdcExportXml, String qualifiedTableName)
+			throws SAXException, IOException, ParserConfigurationException {
 		ArrayList<String> selectedColumns = new ArrayList<String>();
 		// Now parse the CDC Export XML document
-		LOGGER.log(TraceLevel.TRACE,
-				"Parsing subscription export XML document " + cdcExportXml);
+		LOGGER.log(TraceLevel.TRACE, "Parsing subscription export XML document " + cdcExportXml);
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-		Document document = dbf.newDocumentBuilder().parse(
-				new File(cdcExportXml));
+		Document document = dbf.newDocumentBuilder().parse(new File(cdcExportXml));
 
 		// First get the root element of the document, should be TS
 		Element docElement = Utility.getRootElement(document);
 
 		// Get the subscription element
-		Element subscriptionElement = Utility.getFirstChildElement(docElement,
-				"Subscription");
+		Element subscriptionElement = Utility.getFirstChildElement(docElement, "Subscription");
 		String subscriptionName = subscriptionElement.getAttribute("name");
-		LOGGER.log(TraceLevel.TRACE,
-				"Subscription name found in XML document: " + subscriptionName);
+		LOGGER.log(TraceLevel.TRACE, "Subscription name found in XML document: " + subscriptionName);
 
-		List<Element> tableMappings = Utility.getChildElementsByName(
-				subscriptionElement, "TableMapping");
+		List<Element> tableMappings = Utility.getChildElementsByName(subscriptionElement, "TableMapping");
 		boolean tableFound = false;
 		for (int t = 0; t < tableMappings.size(); t++) {
 			Element tableMapping = tableMappings.get(t);
@@ -607,20 +567,14 @@ public class CDCParse extends AbstractOperator {
 					+ tableMapping.getAttribute("sourceTableName");
 			if (tableName.equalsIgnoreCase(qualifiedTableName)) {
 				tableFound = true;
-				LOGGER.log(TraceLevel.TRACE, "Found table mapping for table "
-						+ tableName);
+				LOGGER.log(TraceLevel.TRACE, "Found table mapping for table " + tableName);
 
-				List<Element> sourceColumns = Utility.getChildElementsByName(
-						tableMapping, "SourceColumn");
+				List<Element> sourceColumns = Utility.getChildElementsByName(tableMapping, "SourceColumn");
 				for (int c = 0; c < sourceColumns.size(); c++) {
 					Element columnMapping = sourceColumns.get(c);
-					String columnName = Utility.getXMLAttributeValue(
-							columnMapping, "columnName");
-					boolean columnSelected = Utility
-							.getXMLAttributeValueAsBoolean(columnMapping,
-									"selected");
-					LOGGER.log(TraceLevel.TRACE, "Column found: " + columnName
-							+ ", selected: " + columnSelected);
+					String columnName = Utility.getXMLAttributeValue(columnMapping, "columnName");
+					boolean columnSelected = Utility.getXMLAttributeValueAsBoolean(columnMapping, "selected");
+					LOGGER.log(TraceLevel.TRACE, "Column found: " + columnName + ", selected: " + columnSelected);
 					if (columnSelected) {
 						selectedColumns.add(columnName);
 					}
@@ -628,11 +582,8 @@ public class CDCParse extends AbstractOperator {
 			}
 		}
 		if (!tableFound)
-			LOGGER.log(
-					TraceLevel.WARN,
-					"Table mapping for table "
-							+ qualifiedTableName
-							+ " not found in XML file, no tuples for this table will be processed");
+			LOGGER.log(TraceLevel.WARN, "Table mapping for table " + qualifiedTableName
+					+ " not found in XML file, no tuples for this table will be processed");
 		return selectedColumns;
 	}
 

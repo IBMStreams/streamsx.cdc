@@ -21,7 +21,6 @@ import com.ibm.streams.operator.StreamingOutput;
 import com.ibm.streams.operator.Tuple;
 import com.ibm.streams.operator.Type;
 import com.ibm.streams.operator.log4j.TraceLevel;
-import com.ibm.streams.operator.meta.TupleType;
 import com.ibm.streams.operator.model.Icons;
 import com.ibm.streams.operator.model.InputPortSet;
 import com.ibm.streams.operator.model.InputPortSet.WindowMode;
@@ -58,8 +57,10 @@ import com.ibm.streams.operator.types.RString;
  * </p>
  */
 @PrimitiveOperator(name = "CDCSource", namespace = "com.ibm.streamsx.cdc", description = "Java Operator CDCSource")
-@InputPorts({ @InputPortSet(description = "Optional input ports", optional = true, controlPort = true, windowingMode = WindowMode.NonWindowed, windowPunctuationInputMode = WindowPunctuationInputMode.Oblivious) })
-@OutputPorts({ @OutputPortSet(description = "Port that produces tuples", cardinality = 1, optional = false, windowPunctuationOutputMode = WindowPunctuationOutputMode.Generating) })
+@InputPorts({
+		@InputPortSet(description = "Optional input ports", optional = true, controlPort = true, windowingMode = WindowMode.NonWindowed, windowPunctuationInputMode = WindowPunctuationInputMode.Oblivious) })
+@OutputPorts({
+		@OutputPortSet(description = "Port that produces tuples", cardinality = 1, optional = false, windowPunctuationOutputMode = WindowPunctuationOutputMode.Generating) })
 @Icons(location16 = "icons/CDCSource_16x16.png", location32 = "icons/CDCSource_32x32.png")
 public class CDCSource extends AbstractOperator {
 
@@ -116,13 +117,10 @@ public class CDCSource extends AbstractOperator {
 			serverSocket = new ServerSocket(port);
 		connectionSocket = serverSocket.accept();
 		LOGGER.log(TraceLevel.TRACE,
-				"New Client connected : " + connectionSocket.getInetAddress()
-						+ ":" + connectionSocket.getPort());
+				"New Client connected : " + connectionSocket.getInetAddress() + ":" + connectionSocket.getPort());
 		toClient = new PrintWriter(connectionSocket.getOutputStream(), true);
-		fromClient = new BufferedReader(new InputStreamReader(
-				connectionSocket.getInputStream()));
-		toClient.println("i" + metadataSeparator
-				+ Utility.ISO_DATEFORMAT.format(new Date()));
+		fromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
+		toClient.println("i" + metadataSeparator + Utility.ISO_DATEFORMAT.format(new Date()));
 		toClient.flush();
 	}
 
@@ -135,34 +133,27 @@ public class CDCSource extends AbstractOperator {
 	 *             Operator failure, will cause the enclosing PE to terminate.
 	 */
 	@Override
-	public synchronized void initialize(OperatorContext operatorContext)
-			throws Exception {
+	public synchronized void initialize(OperatorContext operatorContext) throws Exception {
 		// Must call super.initialize(context) to correctly setup an operator.
 		super.initialize(operatorContext);
 		this.operatorContext = operatorContext;
-		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName()
-				+ " initializing in PE: " + operatorContext.getPE().getPEId()
-				+ " in Job: " + operatorContext.getPE().getJobId());
-		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName()
-				+ " listening at port number " + port);
+		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName() + " initializing in PE: "
+				+ operatorContext.getPE().getPEId() + " in Job: " + operatorContext.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + operatorContext.getName() + " listening at port number " + port);
 		// Check if the CDCSource operator has an input port
 		hasInputPort = !operatorContext.getStreamingInputs().isEmpty();
 		// Get the output schema
-		StreamSchema outputSchema = operatorContext.getStreamingOutputs()
-				.get(0).getStreamSchema();
-		LOGGER.log(TraceLevel.TRACE,
-				"Type of output schema: " + outputSchema.getLanguageType());
+		StreamSchema outputSchema = operatorContext.getStreamingOutputs().get(0).getStreamSchema();
+		LOGGER.log(TraceLevel.TRACE, "Type of output schema: " + outputSchema.getLanguageType());
 		String outputTuple = "<";
 		for (String attrName : outputSchema.getAttributeNames()) {
 			if (!outputTuple.equals("<"))
 				outputTuple += ", ";
-			outputTuple += outputSchema.getAttribute(attrName).getType()
-					.getLanguageType();
+			outputTuple += outputSchema.getAttribute(attrName).getType().getLanguageType();
 			outputTuple += " " + attrName;
 		}
 		outputTuple += ">";
-		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCSource operator is "
-				+ outputTuple);
+		LOGGER.log(TraceLevel.TRACE, "Output tuple for CDCSource operator is " + outputTuple);
 		// Start listening on the specified port
 		WaitForClient();
 		/*
@@ -170,19 +161,18 @@ public class CDCSource extends AbstractOperator {
 		 * initialize time but started. The thread will be started by
 		 * allPortsReady().
 		 */
-		processThread = getOperatorContext().getThreadFactory().newThread(
-				new Runnable() {
-					@Override
-					public void run() {
-						try {
-							produceTuples();
-						} catch (Exception e) {
-							LOGGER.log(TraceLevel.ERROR,
-									"Operator error " + e.getMessage());
-						}
-					}
+		processThread = getOperatorContext().getThreadFactory().newThread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					produceTuples();
+				} catch (Exception e) {
+					LOGGER.log(TraceLevel.ERROR, "Operator error: " + e.getMessage());
+					e.printStackTrace();
+				}
+			}
 
-				});
+		});
 
 		/*
 		 * Set the thread not to be a daemon to ensure that the SPL runtime will
@@ -202,9 +192,8 @@ public class CDCSource extends AbstractOperator {
 	@Override
 	public synchronized void allPortsReady() throws Exception {
 		OperatorContext context = getOperatorContext();
-		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName()
-				+ " all ports are ready in PE: " + context.getPE().getPEId()
-				+ " in Job: " + context.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName() + " all ports are ready in PE: "
+				+ context.getPE().getPEId() + " in Job: " + context.getPE().getJobId());
 		// Start a thread for producing tuples because operator
 		// implementations must not block and must return control to the caller.
 		processThread.start();
@@ -236,27 +225,19 @@ public class CDCSource extends AbstractOperator {
 			// tuple
 			String[] messageContent = messageReceived.split(metadataSeparator);
 			char recordType = messageContent[0].charAt(0);
-			OutputTuple cdcDataTuple = out.newTuple();
-			StreamSchema metadataSchema = Type.Factory
-					.getStreamSchema("tuple<rstring txTableName,rstring txTimestamp,rstring txId, rstring txEntryType, rstring txUser>");
-			java.lang.Object[] metadataArray = {
-					new RString(messageContent[1]),
-					new RString(messageContent[2]),
-					new RString(messageContent[3]),
-					new RString(messageContent[4]),
-					new RString(messageContent[5]) };
-			Tuple cdcMetadata = metadataSchema.getTuple(metadataArray);
-			cdcDataTuple.setTuple("cdcMetadata", cdcMetadata);
-			cdcDataTuple.setString("data", "");
+			StreamSchema metadataSchema = Type.Factory.getStreamSchema(
+					"tuple<rstring txTableName,rstring txTimestamp,rstring txId, rstring txEntryType, rstring txUser>");
+
 			// Now populate the data
 			switch (recordType) {
 			case 'd':// Data
-				/*
-				 * Tuple to be sent: rstring recordType, rstring tableName
-				 * rstring txTimestamp rstring txId rstring entryType (I/U/D)
-				 * rstring txUser rstring record itself
-				 */
 				LOGGER.log(TraceLevel.TRACE, "Data record received");
+				OutputTuple cdcDataTuple = out.newTuple();
+				java.lang.Object[] metadataArray = { new RString(messageContent[1]), new RString(messageContent[2]),
+						new RString(messageContent[3]), new RString(messageContent[4]),
+						new RString(messageContent[5]) };
+				Tuple cdcMetadata = metadataSchema.getTuple(metadataArray);
+				cdcDataTuple.setTuple("cdcMetadata", cdcMetadata);
 				// tuple.setString("txId", messageContent[3]);
 				// tuple.setString("txEntryType", messageContent[4]);
 				// tuple.setString("txUser", messageContent[5]);
@@ -269,7 +250,7 @@ public class CDCSource extends AbstractOperator {
 				break;
 			case 'i':// Initialize
 				LOGGER.log(TraceLevel.TRACE, "Initialization tuple received");
-				out.submit(cdcDataTuple);
+				// out.submit(cdcDataTuple);
 				break;
 			case 'f':// Final
 				LOGGER.log(TraceLevel.TRACE, "Final tuple received");
@@ -277,8 +258,7 @@ public class CDCSource extends AbstractOperator {
 			case 'h':// Handshake
 				LOGGER.log(TraceLevel.TRACE, "Handshake received");
 				if (!hasInputPort) {
-					toClient.println(messageReceived + metadataSeparator
-							+ Utility.ISO_DATEFORMAT.format(new Date()));
+					toClient.println(messageReceived + metadataSeparator + Utility.ISO_DATEFORMAT.format(new Date()));
 					toClient.flush();
 				}
 				// TODO: If there is an input port, wait until one of the
@@ -288,8 +268,7 @@ public class CDCSource extends AbstractOperator {
 				break;
 
 			default:
-				LOGGER.log(TraceLevel.ERROR, "Invalid record received: "
-						+ messageReceived);
+				LOGGER.log(TraceLevel.ERROR, "Invalid record received: " + messageReceived);
 				break;
 			}
 		}
@@ -304,8 +283,7 @@ public class CDCSource extends AbstractOperator {
 	 *             Operator failure, will cause the enclosing PE to terminate.
 	 */
 	@Override
-	public final void process(StreamingInput<Tuple> inputStream, Tuple tuple)
-			throws Exception {
+	public final void process(StreamingInput<Tuple> inputStream, Tuple tuple) throws Exception {
 	}
 
 	/**
@@ -321,9 +299,8 @@ public class CDCSource extends AbstractOperator {
 			processThread = null;
 		}
 		OperatorContext context = getOperatorContext();
-		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName()
-				+ " shutting down in PE: " + context.getPE().getPEId()
-				+ " in Job: " + context.getPE().getJobId());
+		LOGGER.log(TraceLevel.TRACE, "Operator " + context.getName() + " shutting down in PE: "
+				+ context.getPE().getPEId() + " in Job: " + context.getPE().getJobId());
 		// Close connections
 		connectionSocket.close();
 		serverSocket.close();
