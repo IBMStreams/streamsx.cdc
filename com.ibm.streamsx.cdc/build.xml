@@ -15,7 +15,7 @@
 	<property name="src.dir" value="impl/java/src" />
 	<property name="build.dir" value="impl/java/classes" />
 	<property name="lib.dir" value="impl/lib" />
-	<fail unless="cdc_as_lib.dir" messages="opt/downloaded directory does not exist, make sure that the Access Server jar files are copied to the toolkit's opt/downloaded directory" />
+	<fail unless="cdc_as_lib.dir" message="opt/downloaded directory does not exist, make sure that the Access Server jar files are copied to the toolkit's opt/downloaded directory" />
 
 	<target name="clean">
 		<delete dir="${build.dir}" />
