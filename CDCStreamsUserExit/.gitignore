@@ -5,3 +5,6 @@
 # Java excludes
 *.class
 
+# Other excludes
+/log
+
