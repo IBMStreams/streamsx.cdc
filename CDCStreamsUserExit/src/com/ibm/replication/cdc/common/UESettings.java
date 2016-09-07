@@ -35,6 +35,7 @@ public class UESettings {
 	public String tcpHostPort = "localhost:12345";
 	public String namedPipe = "/tmp/fifofile";
 	public String separator = "\u001d";
+	public String fixColumnConversionCharacter = " ";
 	public String metadataSeparator = "\u0000";
 	public int handshakeAfterMaxTransactions = 100;
 	public int handshakeAfterMaxSeconds = 60;
@@ -45,7 +46,7 @@ public class UESettings {
 	public boolean debug = false;
 
 	UETrace trace = new UETrace(true, null);
-	
+
 	// Constructor
 	public UESettings(String propertiesFileName) {
 		if (propertiesFileName != null && !propertiesFileName.isEmpty())
@@ -56,51 +57,58 @@ public class UESettings {
 
 	// Load variables from the properties file
 	private void load(String propertiesFileName) {
-		
+
 		trace.writeAlways("Reading configuration from properties file " + propertiesFileName);
-		
 
 		Properties properties = new Properties();
-		
+
 		try {
+			// First try to find properties file in classpath
+			InputStream propertiesStream;
 			URL fileURL = UESettings.class.getClassLoader().getResource(propertiesFileName);
-			trace.writeAlways("Resolved properties file: " + fileURL);
-			InputStream stream = UESettings.class.getClassLoader().getResourceAsStream(propertiesFileName);
-			properties.load(stream);
+			if (fileURL != null) {
+				trace.writeAlways("Resolved properties file from classpath: " + fileURL);
+				propertiesStream = UESettings.class.getClassLoader().getResourceAsStream(propertiesFileName);
+				properties.load(propertiesStream);
+			} else {
+				trace.writeAlways("Properties file could not be resolved from classpath, checking current directory");
+				File propertiesFile = new File(propertiesFileName);
+				trace.writeAlways("Resolved properties file: " + propertiesFile.getAbsolutePath());
+				propertiesStream = new FileInputStream(propertiesFile);
+				properties.load(propertiesStream);
+			}
+
 			// Log all properties into the trace
 			Set<Object> propertiesKeys = properties.keySet();
 			for (Object key : propertiesKeys) {
-				trace.writeAlways(key + "=" + properties.getProperty((String) key));
+				String propertyValue = properties.getProperty((String) key);
+				trace.writeAlways(key + "=" + propertyValue + " (length=" + propertyValue.length() + ")");
 			}
 		} catch (Exception e) {
-			trace.writeAlways("Error processing properties from file " + propertiesFileName + ", message: " + e.getMessage());
+			trace.writeAlways(
+					"Error processing properties from file " + propertiesFileName + ", message: " + e.getMessage());
 		}
 
 		outputType = properties.getProperty("outputType", outputType);
 		tcpHostPort = properties.getProperty("tcpHostPort", tcpHostPort);
 		namedPipe = properties.getProperty("namedPipe", namedPipe);
 		separator = properties.getProperty("separator", separator);
-		metadataSeparator = properties.getProperty("metadataSeparator",
-				metadataSeparator);
-		handshakeAfterMaxTransactions = Integer.parseInt(properties
-				.getProperty("handshakeAfterMaxTransactions",
-						Integer.toString(handshakeAfterMaxTransactions)));
-		handshakeAfterMaxSeconds = Integer.parseInt(properties.getProperty(
-				"handshakeAfterMaxSeconds",
-				Integer.toString(handshakeAfterMaxSeconds)));
-		handshakeTimeoutMs = Integer.parseInt(properties.getProperty(
-				"handshakeTimeoutMs", Integer.toString(handshakeTimeoutMs)));
-		handshakeMaximumFailures = Integer.parseInt(properties.getProperty(
-				"handshakeMaximumFailures",
-				Integer.toString(handshakeMaximumFailures)));
-		tcpConnectionTimeoutSeconds = Integer.parseInt(properties.getProperty(
-				"tcpConnectionTimeoutSeconds",
-				Integer.toString(tcpConnectionTimeoutSeconds)));
-		initCDCSourceTimeoutSeconds = Integer.parseInt(properties.getProperty(
-				"initCDCSourceTimeoutSeconds",
-				Integer.toString(initCDCSourceTimeoutSeconds)));
-		debug = Boolean.parseBoolean(properties.getProperty("debug",
-				Boolean.toString(debug)));
+		fixColumnConversionCharacter = properties.getProperty("fixColumnConversionCharacter",
+				fixColumnConversionCharacter);
+		metadataSeparator = properties.getProperty("metadataSeparator", metadataSeparator);
+		handshakeAfterMaxTransactions = Integer.parseInt(properties.getProperty("handshakeAfterMaxTransactions",
+				Integer.toString(handshakeAfterMaxTransactions)));
+		handshakeAfterMaxSeconds = Integer.parseInt(
+				properties.getProperty("handshakeAfterMaxSeconds", Integer.toString(handshakeAfterMaxSeconds)));
+		handshakeTimeoutMs = Integer
+				.parseInt(properties.getProperty("handshakeTimeoutMs", Integer.toString(handshakeTimeoutMs)));
+		handshakeMaximumFailures = Integer.parseInt(
+				properties.getProperty("handshakeMaximumFailures", Integer.toString(handshakeMaximumFailures)));
+		tcpConnectionTimeoutSeconds = Integer.parseInt(
+				properties.getProperty("tcpConnectionTimeoutSeconds", Integer.toString(tcpConnectionTimeoutSeconds)));
+		initCDCSourceTimeoutSeconds = Integer.parseInt(
+				properties.getProperty("initCDCSourceTimeoutSeconds", Integer.toString(initCDCSourceTimeoutSeconds)));
+		debug = Boolean.parseBoolean(properties.getProperty("debug", Boolean.toString(debug)));
 
 	}
 
