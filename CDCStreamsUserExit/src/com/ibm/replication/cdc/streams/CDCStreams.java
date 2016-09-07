@@ -1,5 +1,8 @@
 package com.ibm.replication.cdc.streams;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,6 +56,9 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 
 	private String txTableNameParm = null;
 	private String txTableName = null;
+
+	private String fixColumnsParm = null;
+	private List<String> fixColumns = new ArrayList<String>();
 
 	/**
 	 * Subscription-level initialization.
@@ -205,6 +211,14 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 			txTableNameParm = txTableNameMatcher.group(1);
 			trace.writeAlways("txTableName parameter specified: " + txTableNameParm);
 		}
+		// Check if the fixColumns parameter was passed to the user exit
+		Pattern fixColumnsPattern = Pattern.compile("fixColumns=((\\w+,?)*)");
+		Matcher fixColumnsMatcher = fixColumnsPattern.matcher(ueParameter);
+		if (fixColumnsMatcher.find()) {
+			fixColumnsParm = fixColumnsMatcher.group(1);
+			trace.writeAlways("fixColumns parameter specified: " + fixColumnsParm);
+			fixColumns = new ArrayList<String>(Arrays.asList(fixColumnsParm.split(",")));
+		}
 
 		// Subscribe to Before-Insert/Update/Delete events
 		eventPublisher.unsubscribeEvent(ReplicationEventTypes.ALL_EVENTS);
@@ -276,15 +290,16 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 		// Write column-level information for the before-image (update + delete)
 		if (beforeImage != null) {
 			for (int i = 1; i <= beforeImage.getColumnCount(); i++) {
-				// Ensure that only the table's columns are replicated, not the
-				// journal control columns
+				// Ensure that only the table's columns are written in the data
+				// section, not the journal control columns
 				if (beforeImage.getColumnName(i).startsWith("&"))
 					break;
 				try {
 					if (i != 1)
 						printLine += settings.separator;
 					if (beforeImage.getObject(i) != null)
-						printLine += beforeImage.getObject(i).toString();
+						printLine += getFixedColumnContents(beforeImage.getColumnName(i),
+								beforeImage.getObject(i).toString());
 				} catch (DataTypeConversionException e) {
 					trace.write(e.getMessage());
 				}
@@ -297,14 +312,15 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 		// Write column-level information for the after-image (insert+update)
 		if (afterImage != null) {
 			for (int i = 1; i <= afterImage.getColumnCount(); i++) {
-				// Ensure that only the table's columns are replicated, not the
-				// journal control columns
+				// Ensure that only the table's columns are written in the data
+				// section, not the journal control columns
 				if (afterImage.getColumnName(i).startsWith("&"))
 					break;
 				try {
 					printLine += settings.separator;
 					if (afterImage.getObject(i) != null)
-						printLine += afterImage.getObject(i).toString();
+						printLine += getFixedColumnContents(afterImage.getColumnName(i),
+								afterImage.getObject(i).toString());
 				} catch (DataTypeConversionException e) {
 					trace.write(e.getMessage());
 				}
@@ -321,6 +337,25 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 
 		// Ensure that the CDC engine does not write to the target table
 		return false;
+	}
+
+	/**
+	 * Checks if the contents of the column must potentially be fixed (separator
+	 * and new line characters removed) and returns the fixed content
+	 * 
+	 * @param columnName
+	 *            Name of the column
+	 * @param columnValue
+	 *            Contents of the column
+	 * @return
+	 */
+	private String getFixedColumnContents(String columnName, String columnValue) {
+		String fixedValue = columnValue;
+		if (!fixColumns.isEmpty() && fixColumns.contains(columnName)) {
+			fixedValue = columnValue.replaceAll("[\r\n" + settings.separator + "]",
+					settings.fixColumnConversionCharacter);
+		}
+		return fixedValue;
 	}
 
 	/**
