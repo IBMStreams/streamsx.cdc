@@ -3,7 +3,7 @@ namespace com.ibm.streamsx.cdc.sample ;
 use com.ibm.streamsx.cdc::* ;
 
 /**
- * ExportXmlSample
+ * CHCCLPSample
  * 
  * Example Streams application that listens on a TCP/IP port for incoming tuples from a CDC
  * subscription. Once a tuple is received by the CDCSource operator, it is parsed to separate the 
@@ -12,7 +12,7 @@ use com.ibm.streamsx.cdc::* ;
  * portion of the tuple to extract the output columns.
  *  
  */
-composite ExportedXmlSample
+composite CHCCLPSample
 {
 	graph
 
@@ -36,31 +36,35 @@ composite ExportedXmlSample
 
 		// Parse the change record from the CUSTTHRESHOLD table and extract various columns. If a 
 		// "delete" change is received, the before-image of the specified columns is sent to the
-		// output port. To correctly parse the change information, the STRDB2 subscription was
-		// exported to XML and this XML file is read by the CDCParse operator to correctly parse
-		// the raw tuple.
+		// output port. To correctly parse the change information, a connection to the CDC Access Server
+		// is established and the definition of subscription STRDB2 in datastore CDC_DB2 is retrieved
+		// by the CDCParse operator to correctly parse the raw tuple.
 		stream<cdcMetadataT cdcMetadata, rstring msisdn, rstring name,
 			rstring max_monthly_charge, rstring threshold_percentage>
 			ParseCustThreshold = CDCParse(SplitCustThreshold)
 		{
 			param
 				separator : "\\|" ;
-				cdcExportXml : "etc/STRDB2.xml" ;
+				accessServerConnectionDocument : "etc/AccessServerConnection.xml" ;
+				dataStore : "CDC_DB2" ;
+				subscription : "STRDB2" ;
 				qualifiedTableName : "TELCO.CUST_THRESHOLD" ;
 				fillDeleteAfterImage : true ;
 		}
 
 		// Parse the change record from the RATEDCDR table and extract various columns. If a 
 		// "delete" change is received, the before-image of the specified columns is sent to the
-		// output port. To correctly parse the change information, the STRDB2 subscription was
-		// exported to XML and this XML file is read by the CDCParse operator to correctly parse
-		// the raw tuple.
+		// output port. To correctly parse the change information, a connection to the CDC Access Server
+		// is established and the definition of subscription STRDB2 in datastore CDC_DB2 is retrieved
+		// by the CDCParse operator to correctly parse the raw tuple.
 		stream<cdcMetadataT cdcMetadata, rstring msisdna, rstring msisdnb,
 			rstring duration_secs, rstring cost> ParseRatedCdr = CDCParse(SplitRatedCdr)
 		{
 			param
 				separator : "\\|" ;
-				cdcExportXml : "etc/STRDB2.xml" ;
+				accessServerConnectionDocument : "etc/AccessServerConnection.xml" ;
+				dataStore : "CDC_DB2" ;
+				subscription : "STRDB2" ;
 				qualifiedTableName : "TELCO.RATED_CDR" ;
 				fillDeleteAfterImage : true ;
 		}
