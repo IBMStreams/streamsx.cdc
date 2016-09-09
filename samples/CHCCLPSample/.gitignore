@@ -1,0 +1,6 @@
+# Streams-specific excludes
+/.toolkitList
+/.settings
+/output
+/opt
+/impl/

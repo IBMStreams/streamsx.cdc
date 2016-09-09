@@ -1,0 +1,6 @@
+<AccessServer>
+	<Host>tirnanog</Host>
+	<Port>10101</Port>
+	<User>admin</User>
+	<Password>passw0rd</Password>
+</AccessServer>
