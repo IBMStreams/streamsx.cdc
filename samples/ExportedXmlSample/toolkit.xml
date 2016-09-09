@@ -4,12 +4,10 @@
   <toolkit name="ExportedXmlSample" requiredProductVersion="4.1.0.0" version="1.1.0">
     <description/>
     <uriTable>
-      <uri index="2" value="com.ibm.streamsx.cdc.sample/CHCCLPSample.spl"/>
       <uri index="1" value="com.ibm.streamsx.cdc.sample/ExportedXmlSample.spl"/>
     </uriTable>
     <namespace name="com.ibm.streamsx.cdc.sample">
       <compositeOp column="11" line="15" name="ExportedXmlSample" potentialMain="true" uriIndex="1"/>
-      <compositeOp column="11" line="15" name="CHCCLPSample" potentialMain="true" uriIndex="2"/>
     </namespace>
     <dependency>
       <common:name>com.ibm.streamsx.cdc</common:name>
