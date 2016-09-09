@@ -1,49 +1,51 @@
 # InfoSphere CDC Streams toolkit
 ==============
 
-This toolkit allows Streams to receive tuples from InfoSphere Data Replication Change Data Capture. It provides a CDC Java user exit which allows subscriptions to push record changes to a Streams application and two Streams operators to respectively receive the incoming tuples and convert them into a tuple. The toolkit contains an example which demonstrates the use of the Streams operators.
+This toolkit allows Streams to receive tuples from InfoSphere Data Replication Change Data Capture. It provides a CDC Java user exit which allows subscriptions to push record changes to a Streams application and two Streams operators to respectively receive the incoming tuples (CDCSource) and convert (CDCParse) them into a tuple. The toolkit contains an example which demonstrates the use of the Streams operators.
 
 ## Installing the toolkit
-You can choose to either install the pre-built toolkit, or to build it yourself on the IBM Streams server using the ant tool. In either case, some manual steps are required to make the CDC jar files available on the Streams server. 
+You can choose to either install the pre-built toolkit, or to build it yourself on the IBM Streams server using the ant tool. In either case, some manual steps are required to implement the CDC user exit jar file on the CDC Engine server and to make the CDC Access Server files available on the Streams server. 
 
 One part of the toolkit, CDCStreamsUserExit, must be installed on the CDC server; this part contains the user exit which is to be configured for the CDC subscriptions. 
 
 The other component, com.ibm.streamsx.cdc, must be installed on the IBM Streams server and contains the CDCSource and CDCParse operators which can be incorporated into the Streams application.
 
 ### Downloading the CDC Streams toolkit
-* Download the toolkit as a zip file: https://github.com/IBMStreams/streamsx.cdc/archive/master.zip into a temporary directory, for example /tmp
+* Download the full toolkit as a zip file: https://github.com/IBMStreams/streamsx.cdc/archive/master.zip into a temporary directory, for example /tmp
 * Unzip the master.zip file
 
-### Making the CDC jar files available on the Streams server
-To access the CDC configuration, the toolkit requires the jar files which are provided as part of the CDC Access Server.
-* Create a directory structure opt/downloaded, which will hold the Access Server jar files, under the CDC Streams toolkit, for example: mkdir -p /tmp/streamsx.cdc/com.ibm.streamsx.cdc/opt/downloaded
-* Copy the contents of the CDC Access Server lib folder (jar files) to the opt/downloaded directory
-
+### Optional: build the toolkit using ant
 Optionally, only if you plan to build (recompile) the toolkit, the CDC Engine jar files are needed to compile the user exit.
 * Create a directory that holds the CDC engine components, for example /tmp/CDCEngine
 * Copy the CDC Engine lib folder to this directory
 
-We do not recommend installing the CDC engine and CDC Access Server on the Streams server, but rather copy the required components from the servers CDC running the respective CDC components to the Streams server.
+* Create a directory structure opt/downloaded, which will hold the Access Server jar files, under the CDC Streams toolkit, for example: mkdir -p /tmp/streamsx.cdc/com.ibm.streamsx.cdc/opt/downloaded
+* Copy the contents of the CDC Access Server lib folder (jar files) to the opt/downloaded directory
+* Set the Streams environment variables by sourcing the `streamsprofile.sh` script which can be found in the Streams `bin` directory
+* Set environment variable `CDC_ENGINE_HOME` to the directory that contains the CDC Engine's lib folder, for example `/tmp/CDCEngine`
+* Go to the toolkit's main directory that holds the build.xml file, for example: `cd /tmp/streamsx.cdc`
+* Run `ant`
 
-### Optional: build the toolkit using ant
-* Set environment variable CDC_ENGINE_HOME to the directory that contains the CDC Engine's lib folder
-* Go to the toolkit's main directory that holds the build.xml file, for example: cdc /tmp/streamsx.cdc
-* Run ant
+### Implementing the CDC toolkit on the Streams server
+To access the CDC configuration, the Streams toolkit requires the jar files which are provided as part of the CDC Access Server. If you have not built the toolkit using ant (described in the previous section), you will need to copy the CDC Access Server jar files into the toolkit's directory structure.
+* Create a directory structure opt/downloaded, which will hold the Access Server jar files, under the CDC Streams toolkit, for example: `mkdir -p /tmp/streamsx.cdc/com.ibm.streamsx.cdc/opt/downloaded`
+* Copy the contents of the CDC Access Server lib folder (jar files) to the `opt/downloaded` directory
 
-### Move the CDC Streams toolkit to the toolkit directory
 To register the toolkit in IBM Streams, it must be moved to a directory in the toolkit path.
-* Move the com.ibm.streamsx.cdc directory to $STREAMS_INSTALL/toolkits; this will make it visible to IBM Streams and Streams Studio
+* Move the `com.ibm.streamsx.cdc` directory to `$STREAMS_INSTALL/toolkits`; this will make it visible to IBM Streams and Streams Studio
 
-### Enabling CDC to target a Streams application
+We do not recommend installing the CDC engine and CDC Access Server components on the Streams server, but rather copy the required components to the Streams server.
+
+### Implementing the CDC Streams user exit on CDC target engine
 * Transfer the CDCStreamsUserExit folder to the CDC installation directory (_cdc-home_) on the target engine
-* Update the _cdc-home_/conf/system.cp file and add CDCStreamsUserExit/lib/CDCStreamsUserExit.jar to the classpath
+* Update the _cdc-home_/conf/system.cp file and append the following string to the classpath: `:CDCStreamsUserExit:CDCStreamsUserExit/lib/*`
 * Stop all subscriptions targeting the CDC instance in question and restart the instance 
 
 ### Configuration
-The behaviour of the CDC Streams user exit is determined by the settings in CDCStreams.properties files, which is kept in the CDCStreamsUserExit folder. You can create multiple properties files and refer to them as a parameter in the subscription-level user exit.
+The behaviour of the CDC Streams user exit is determined by the settings in `CDCStreams.properties` file, which is kept in the `CDCStreamsUserExit` folder. You can create multiple properties files and refer to them as a parameter in the subscription-level user exit. The user exit will first look for the properties file in the CDC engine's classpath (which has been enhanced with the `CDCStreamsUserExit` directory). If the specified properties file is not found in the classpath, the user exit will try to load it from the current directory, which is the _cdc-home_ directory.
 
 The most-important parameters to configure in the CDCStreams.properties file are:
-* outputType: Specifies the target of the user exit. For the tightest integration between CDC and Streams, we recommend to set this paramter to "cdcsource"; this causes the user exit to try to connect to the toolkit's CDCSource operator
+* outputType: Specifies the target of the user exit. For the tightest integration between CDC and Streams, we recommend to set this parameter to "cdcsource"; this causes the user exit to try to connect to the toolkit's CDCSource operator
 * tcpHostPort: Host name (or IP address) and port that the Streams application is listening to. This parameter applies when the outputType is cdcsource or tcpsource only
 
 ## Getting started
@@ -86,7 +88,7 @@ Review the mappings and confirm the mapping of the source table.
 
 ![14_review_mappings](https://cloud.githubusercontent.com/assets/8166955/9888428/433fbcec-5bf5-11e5-90b3-5c3a32ce9fcb.PNG)
 
-When the table has been successfully mapped, specify "CDCStreams" as the user exit for the "before insert", "before update" and "before delete" actions.
+When the table has been successfully mapped, specify "com.ibm.replication.cdc.streams.CDCStreams" as the user exit for the "before insert", "before update" and "before delete" actions.
 
 ![15_set_user_exit](https://cloud.githubusercontent.com/assets/8166955/9888430/43471884-5bf5-11e5-8328-2850c43dcfdf.PNG)
 
