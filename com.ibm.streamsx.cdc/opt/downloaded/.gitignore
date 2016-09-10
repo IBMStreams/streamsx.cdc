@@ -1,0 +1,4 @@
+# This .gitignore ensures that the opt/downloaded directory
+# is included in the downloaded project so that the user doesn't
+# have to create it during implementation of the Streams toolkit
+*.jar

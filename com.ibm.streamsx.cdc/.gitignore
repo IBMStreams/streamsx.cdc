@@ -2,7 +2,6 @@
 /.toolkitList
 /.settings
 /output
-/opt
 
 # Java excludes
 *.class
