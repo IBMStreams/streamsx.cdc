@@ -55,7 +55,7 @@ The most-important parameters to configure in the CDCStreams.properties file are
 ### Mapping tables
 First you must create a subscription referencing the source datastore and the target datastore. The target datastore must reference the CDC installation in which the CDCStreams user exit has been placed.
 
-[01_create_subscription](/documentation/images/01_create_subscription.PNG)
+[01_create_subscription](documentation/Images/01_create_subscription.PNG)
 
 Once the subscription has been created, right-click it and select "User Exit". Subsequently specify CDCStreams as the user exit name and optionally specify the name of the properties file that this subscription will use. If no parameter is specified, the default properties file _cdc-home_/CDCStreamsUserExit/CDCStreams.properties is assumed. By default, the user exit will attempt to find the properties file under the _cdc-home_/CDCStreamsUserExit folder.
 
