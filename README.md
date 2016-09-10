@@ -1,7 +1,7 @@
 # InfoSphere CDC Streams toolkit
 ==============
 
-![documentation readme](documentation/README.md)
+[documentation readme](documentation/README.md)
 
 
 This toolkit allows Streams to receive tuples from InfoSphere Data Replication Change Data Capture. It provides a CDC Java user exit which allows subscriptions to push record changes to a Streams application and two Streams operators to respectively receive the incoming tuples (CDCSource) and convert (CDCParse) them into a tuple. The toolkit contains an example which demonstrates the use of the Streams operators.
