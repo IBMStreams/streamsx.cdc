@@ -258,6 +258,16 @@ public class CDCStreams implements UserExitIF, SubscriptionUserExitIF {
 						+ replicationEvent.getJournalHeader().getObjectName();
 			}
 
+			// Check that the table name was populated, otherwise issue error
+			// and stop the subscription
+			if (txTableName.equals(".") || txTableName.equals("")) {
+				String errorMessage = "ERROR: No table name was received by the user exit and the txTableName parameter has not been specified. "
+						+ "Please specify the fully qualified table name for the txTableName parameter, "
+						+ "for example: txTableName=TELCO.CUST_THRESHOLD";
+				replicationEvent.logEvent(errorMessage);
+				throw new UserExitException(errorMessage);
+			}
+
 			DataRecordIF image = (afterImage != null) ? afterImage : beforeImage;
 			// Generate the empty before image and empty after image based on
 			// the number of table columns replicated
