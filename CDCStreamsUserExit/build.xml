@@ -10,7 +10,10 @@
 
 	<loadproperties srcFile="ant.properties" />
 
-	<property name="cdc_lib.dir" value="${CDC_ENGINE_HOME}/lib" />
+	<property environment="env" />
+	<fail unless="env.CDC_ENGINE_HOME" message="CDC_ENGINE_HOME not set. This toolkit requires the InfoSphere Data Replication CDC Access Server jar files. Please ensure that the CDC ts.jar file are available under $CDC_ENGINE_HOME/lib." />
+
+	<property name="cdc_lib.dir" value="${env.CDC_ENGINE_HOME}/lib" />
 	<property name="src.dir" value="src" />
 	<property name="build.dir" value="classes" />
 	<property name="lib.dir" value="lib" />
