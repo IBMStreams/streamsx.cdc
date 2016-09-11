@@ -19,6 +19,7 @@ import org.xml.sax.SAXException;
 import com.ibm.replication.cdc.scripting.EmbeddedScript;
 import com.ibm.replication.cdc.scripting.EmbeddedScriptException;
 import com.ibm.replication.cdc.scripting.Result;
+import com.ibm.replication.cdc.scripting.ResultStringKeyValues;
 import com.ibm.replication.cdc.scripting.ResultStringTable;
 import com.ibm.streams.operator.AbstractOperator;
 import com.ibm.streams.operator.Attribute;
@@ -485,7 +486,15 @@ public class CDCParse extends AbstractOperator {
 			script.open();
 			scriptExecute(script, "connect server hostname " + accessServerHost + " port " + accessServerPort
 					+ " username " + accessServerUser + " password " + accessServerPassword);
+			// Connect to the source datastore
 			scriptExecute(script, "connect datastore name " + getDataStore());
+			scriptExecute(script, "show subscription name " + getSubscription());
+			// If the target datastore for the subscription is different from
+			// the source, connect
+			ResultStringKeyValues subscriptionInfo = (ResultStringKeyValues) script.getResult();
+			String targetDatastoreName = subscriptionInfo.getValue("Target Datastore");
+			if (!getDataStore().equals(targetDatastoreName))
+				scriptExecute(script, "connect datastore name " + targetDatastoreName);
 			scriptExecute(script, "select subscription name " + getSubscription());
 			scriptExecute(script, "list table mappings");
 			result = script.getResult();

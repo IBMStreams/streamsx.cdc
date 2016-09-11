@@ -268,8 +268,12 @@ public class CDCSource extends AbstractOperator {
 				break;
 
 			default:
-				LOGGER.log(TraceLevel.ERROR, "Invalid record received: " + messageReceived);
-				break;
+				LOGGER.log(TraceLevel.ERROR,
+						"Invalid record received; unexpected number of elements (" + messageContent.length
+								+ "). There are probably carriage returns or line feeds in the data. Review the data and consider "
+								+ "using the fixColumns parameter for the user exit to remove the CR/LF and separator characters. "
+								+ "Data received: " + messageReceived);
+				throw new Exception("Unexpected number of elements in data record");
 			}
 		}
 	}
