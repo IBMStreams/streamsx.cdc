@@ -1,7 +1,7 @@
 # Installing the CDC Streams toolkit
 You can choose to either install the pre-built toolkit, or to build it yourself on the IBM Streams server using the ant tool. In either case, some manual steps are required to implement the CDC user exit jar file on the CDC Engine server and to make the CDC Access Server files available on the Streams server. 
 
-One part of the toolkit, CDCStreamsUserExit, must be installed on the CDC server; this part contains the user exit which is to be configured for the CDC subscriptions. 
+One part of the toolkit, CDCStreamsUserExit, must be installed on the server running the CDC target engine; this part contains the user exit which is to be configured for the CDC subscriptions. 
 
 The other component, com.ibm.streamsx.cdc, must be installed on the IBM Streams server and contains the CDCSource and CDCParse operators which can be incorporated into the Streams application.
 

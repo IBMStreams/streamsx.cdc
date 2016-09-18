@@ -4,8 +4,9 @@
 The behaviour of the CDC Streams user exit is determined by the settings in `CDCStreams.properties` file, which is kept in the `CDCStreamsUserExit` folder. You can create multiple properties files and refer to them as a parameter in the subscription-level user exit. The user exit will first look for the properties file in the CDC engine's classpath (which has been enhanced with the `CDCStreamsUserExit` directory). If the specified properties file is not found in the classpath, the user exit will try to load it from the current directory, which is the _cdc-home_ directory.
 
 The most-important parameters to configure in the CDCStreams.properties file are:
-* outputType: Specifies the target of the user exit. For the tightest integration between CDC and Streams, we recommend to set this parameter to "cdcsource"; this causes the user exit to try to connect to the toolkit's CDCSource operator
-* tcpHostPort: Host name (or IP address) and port that the Streams application is listening to. This parameter applies when the outputType is cdcsource or tcpsource only
+* `outputType`: Specifies the target of the user exit. For the tightest integration between CDC and Streams, we recommend to set this parameter to "cdcsource"; this causes the user exit to try to connect to the toolkit's CDCSource operator
+* `tcpHostPort`: Host name (or IP address) and port that the Streams application is listening to. This parameter applies when the outputType is cdcsource or tcpsource only
+* `handshakeAferMaxTransactions`: When the transaction volume of the source tables is high, doing a handshake for every logical unit of work (transaction) is inefficient. Together with the `handshakeAfterMaxSeconds` property, this setting provides a means to delay the handshake to only when the configured number of transactions has been transmitted, or when a timer interval has expired. Beware that when there is a longer period without any replicated transactions, the subscription's bookmark will not advance. If the subscription is stopped and restarted, the transactions that were committed after the last handshake will be sent to the Streams application again. Dependent on the use case, you may then have to include logic to de-duplicate the redundant records. Alternatively, set the `handshakeAfterMaxTransactions` to `1`, in which case the handshake is done for every committed transaction.
 
 ## Mapping tables
 First you must create a subscription referencing the source datastore and the target datastore. The target datastore must reference the CDC installation in which the CDCStreams user exit has been placed.
@@ -68,7 +69,71 @@ Once at least one table has been mapped, right-click the subscription and select
 #### Optional: Configure properties file to be used for this subscription
 You can optionally specify the name of the properties file that this subscription will use, this to obtain the host and port that the Streams application listens on, and specify other settings. If no parameter is specified, the user exit will find the default properties file `CDCStreams.properties` in the classpath of the CDC engine (and thereby find it in the `CDCStreamsUserExit` folder). If the properties file cannot be found in the classpath, the engine's current directory (_cdc-home_) will be searched
 
-### Creating your Streams application 
+### Creating your Streams application
+You can create your Streams application by creating a SPL Application Project in Streams Studio, making sure that the  `Dependencies` include the `com.ibm.streamsx.cdc` toolkit. Alternatively, you can import one of the sample applications that are provided as part of the CDC toolkit through File --> Import --> Sample SPL Application.
+
+Two sample applications have been provided as part of the toolkit, `CHCCLPSample` and `ExportedXmlSample`. Both applications receive changes via the `CDCSource` operator, then use a `Split` operator to direct the raw tuples to the designated `CDCParse` operator, after which the output is sent to `/dev/stdout`.
+
+`CHCCLPSample` application:
+![CHCCLPSample application](Images/SPL_CHCCLPSample_Graphical.png)
+
+The `CDCSource` operator starts a TCP/IP listener, listening on port `12345`:
+
+
+```
+   stream<cdcDataT> Ingest = CDCSource()
+     {
+       param
+         port : 12345 ;
+     }
+```
+
+CDCSource requires the output tuple type to be `cdcDataT`, which separates the metadata into a `cdcMetadataT` tuple type from the `data`.
+
+```
+type cdcMetadataT = rstring txTableName, rstring txTimestamp, rstring txId,
+	rstring txEntryType, rstring txUser ;
+type cdcDataT = cdcMetadataT cdcMetadata, rstring data;
+```
+Subsequently, the `Split` operator directs the raw tuples to the designated output port. The output port is dynamically determined from the `etc/TableMapping.txt` file.
+
+```
+		(stream<cdcDataT> SplitCustThreshold ; stream<cdcDataT> SplitRatedCdr) =
+			Split(Ingest)
+		{
+			param
+				file : "etc/TableMapping.txt" ;
+				key : txTableName ;
+		}
+```
+
+These are the contents of the `etc/TableMapping.txt` file:
+
+```
+default,-1
+"\*\*\*INITIALIZE\*\*\*",0,1
+"TELCO.CUST_THRESHOLD",0
+"TELCO.RATED_CDR",1
+```
+Data tuples from the `TELCO.CUST_THRESHOLD` table are directed to output port 0 and those from `TELCO.RATED_CDR` go to output port 1. A special tuple type, `\*\*\*INITIALIZE\*\*\*` is directed to both output ports. This tuple is sent by the `CDCStreams` user exit when the subscription is started and the `CDCParse` operator uses this (re-)read the table mapping metadata from CDC.
+
+The application provides 2 `CDCParse` operators, one for tuples coming from `TELCO.CUST_THRESHOLD` and another one for `TELCO.RATED_CDR`.
+
+```
+		stream<cdcMetadataT cdcMetadata, rstring MSISDN, rstring NAME,
+			rstring MAX\_MONTHLY\_CHARGE, rstring THRESHOLD_PERCENTAGE>
+			ParseCustThreshold = CDCParse(SplitCustThreshold)
+		{
+			param
+				separator : "\\|" ;
+				accessServerConnectionDocument : "etc/AccessServerConnection.xml" ;
+				dataStore : "CDC_DB2" ;
+				subscription : "STRDB2" ;
+				qualifiedTableName : "TELCO.CUST_THRESHOLD" ;
+				fillDeleteAfterImage : true ;
+		}
+```
+
 
 ## Troubleshooting
 If you have issues replicating database transactions to your Streams application, you can validate the correct working of individual components.
