@@ -8,3 +8,9 @@ Installation instructions can be found here: [Installing the toolkit](documentat
 
 ## Getting started
 Once installation is done, here you can find how to use the toolkit: [Using the CDCStreams toolkit](documentation/Usage.md)
+
+## Developing your Streams application
+When you've done the initial settings and configured the replication with the user exit, you can start developing your Streams application: [Developing the Streams application](documentation/StreamsDevelopment.md)
+
+## Troubleshooting
+If the CDC subscription fails to send changes to the Streams application, or if your application issues errors when receiving tuples from the subscriptions, please check: [Troubleshooting](documentation/Troubleshooting.md)
